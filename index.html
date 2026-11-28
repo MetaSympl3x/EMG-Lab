@@ -393,7 +393,7 @@ table.p21 tr.p-row:hover{background:rgba(56,189,248,.16)}
   body.hud-open{overflow:hidden}
 }
 
-/* v3 Upgrades: 3D Raycast Selection Badge, Clipping Slice, Baseline Pin & Audit Filters */
+/* v3.4 Upgrades: 3D Raycast Selection Badge, Clipping Slice, Baseline Pin & Audit Filters */
 #sel3dBanner{
   position:fixed;top:46px;left:12px;z-index:21;padding:4px 10px;
   border:1px solid rgba(56,189,248,.45);border-radius:999px;background:rgba(6,14,28,.92);
@@ -779,7 +779,6 @@ function appendModal(){
 }
 
 /* ---- Cache API status check for Pyodide CDN assets ---- */
-const PYODIDE_CACHE = "emg-pyodide-v0.27.5-r2";
 async function checkCacheStatus(){
   const tag = $("cacheStatusTag");
   if(!tag) return;
@@ -788,9 +787,7 @@ async function checkCacheStatus(){
     return;
   }
   try{
-    // Purge legacy cache bucket in case an HTML/truncated CDN response was stored
-    caches.delete("emg-pyodide-v0.27.5").catch(() => {});
-    const cache = await caches.open(PYODIDE_CACHE);
+    const cache = await caches.open("emg-pyodide-v0.27.5");
     const keys = await cache.keys();
     if(keys.length > 0){
       tag.textContent = `CACHE: WARM (${keys.length} FILES)`;
@@ -805,10 +802,9 @@ async function checkCacheStatus(){
 }
 checkCacheStatus();
 
-/* ---- Web Worker with Validated Cache API Interceptor ---- */
+/* ---- Web Worker with Cache API Interceptor ---- */
 const WORKER_CODE = `
-const CACHE_NAME = "emg-pyodide-v0.27.5-r2";
-const PYODIDE_BASE = "https://cdn.jsdelivr.net/pyodide/v0.27.5/full/";
+const CACHE_NAME = "emg-pyodide-v0.27.5";
 const origFetch = self.fetch.bind(self);
 
 self.fetch = async (input, init) => {
@@ -825,14 +821,9 @@ self.fetch = async (input, init) => {
     try {
       const cache = await caches.open(CACHE_NAME);
       const hit = await cache.match(req);
-      if (hit) {
-        const ct = (hit.headers.get("content-type") || "").toLowerCase();
-        if (!ct.includes("text/html")) return hit;
-        await cache.delete(req);
-      }
+      if (hit) return hit;
       const resp = await origFetch(req);
-      const ct = (resp.headers.get("content-type") || "").toLowerCase();
-      if (resp && resp.ok && !ct.includes("text/html")) {
+      if (resp && resp.ok) {
         cache.put(req, resp.clone()).catch(() => {});
       }
       return resp;
@@ -843,10 +834,12 @@ self.fetch = async (input, init) => {
   return origFetch(req);
 };
 
+const activeIndexUrl = await ensurePyodideLoaded();
+
 let pyodide = null;
 
 function b64ToUtf8(b64){
-  const clean = String(b64 || "").replace(/\\s+/g, "");
+  const clean = String(b64 || "").split("\n").join("").split("\r").join("").split(" ").join("");
   const bin = atob(clean);
   const bytes = new Uint8Array(bin.length);
   for(let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
@@ -854,21 +847,35 @@ function b64ToUtf8(b64){
 }
 
 async function ensurePyodideLoaded(){
-  if (typeof self.loadPyodide === "function") return;
-  const scriptUrl = PYODIDE_BASE + "pyodide.js";
-  const resp = await self.fetch(scriptUrl);
-  if (!resp.ok) throw new Error("Failed to fetch pyodide.js: HTTP " + resp.status);
-  const code = await resp.text();
-  if (!code || code.trimStart().startsWith("<")) {
-    throw new Error("CDN returned HTML instead of pyodide.js (check network/proxy)");
+  const bases = [
+    "https://cdn.jsdelivr.net/pyodide/v0.27.5/full/",
+    "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/"
+  ];
+  let lastErr = null;
+  for(const base of bases){
+    try{
+      const resp = await self.fetch(base + "pyodide.js");
+      if(!resp.ok) throw new Error("HTTP " + resp.status);
+      const rawText = await resp.text();
+      const trimmed = rawText.trimStart();
+      if(!trimmed || trimmed[0] === "<"){
+        throw new Error("Non-JS HTML response from " + base);
+      }
+      const cleanLines = rawText.split("\n").filter(ln => !ln.trimStart().startsWith("export "));
+      const blob = new Blob([cleanLines.join("\n")], {type: "application/javascript;charset=utf-8"});
+      const blobUrl = URL.createObjectURL(blob);
+      try{
+        importScripts(blobUrl);
+      }finally{
+        URL.revokeObjectURL(blobUrl);
+      }
+      if(typeof self.loadPyodide === "function") return base;
+      throw new Error("loadPyodide missing in " + base + "pyodide.js");
+    }catch(e){
+      lastErr = e;
+    }
   }
-  const blob = new Blob([code], { type: "application/javascript;charset=utf-8" });
-  const blobUrl = URL.createObjectURL(blob);
-  try {
-    importScripts(blobUrl);
-  } finally {
-    URL.revokeObjectURL(blobUrl);
-  }
+  throw new Error("Pyodide CDN load failed: " + (lastErr ? lastErr.message : "unknown"));
 }
 
 self.onmessage = async (ev) => {
@@ -876,9 +883,8 @@ self.onmessage = async (ev) => {
   if(msg.type === "boot"){
     try{
       self.postMessage({type:"progress", status:"loading Pyodide...", log:"Loading Pyodide runtime in Web Worker (Cache API enabled)...", cls:"info"});
-      await ensurePyodideLoaded();
       pyodide = await loadPyodide({
-        indexURL: PYODIDE_BASE,
+        indexURL: activeIndexUrl,
         stdout: s => self.postMessage({type:"stdout", text: s + "\n"}),
         stderr: s => self.postMessage({type:"stderr", text: s + "\n"}),
       });
@@ -1393,9 +1399,9 @@ function drawPanelB(){
     (f.phi||[]).forEach((v,i)=>{const x=p+ph*i/Math.max(1,f.phi.length-1),y=p+pv*(1-(v-lo)/range);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});
     ctx.stroke();
   }
-  if(baselineData?.panel_b?.frames?.length){
+  if(baselineData && baselineData.panel_b && baselineData.panel_b.frames && baselineData.panel_b.frames.length){
     const bFr = baselineData.panel_b.frames[Math.min(pbState.frame, baselineData.panel_b.frames.length - 1)];
-    if(bFr?.phi?.length){
+    if(bFr && bFr.phi && bFr.phi.length){
       ctx.save(); ctx.setLineDash([4*d, 4*d]); ctx.strokeStyle="rgba(244,63,94,0.75)"; ctx.lineWidth=1.6*d; ctx.beginPath();
       bFr.phi.forEach((v,i)=>{const x=p+ph*i/Math.max(1,bFr.phi.length-1),y=p+pv*(1-(v-lo)/range);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});
       ctx.stroke(); ctx.restore();
@@ -1412,8 +1418,8 @@ function drawPanelB(){
   }
   ctx.fillStyle="#67e8f9";ctx.font=`${7*d}px ui-monospace,monospace`;ctx.fillText(`N=${fr.N} (frame ${idx+1}/${frames.length})`,p,h-5*d);ctx.fillText(`r₊=${(fr.r_plus||0).toFixed(3)}`,w-p-75*d,h-5*d);
   $("subB").textContent = `N=${fr.N} (${idx+1}/${frames.length})`;
-  const tl = (DATA.panel_b.transfer_losses || []).find(t => t.source === `N_${fr.N}`);
-  const tlStr = tl ? ` · Δ_tr=${tl.relative_loss.toExponential(1)}` : "";
+    const tl = (DATA.panel_b.transfer_losses || []).find(t => t.source === "N_" + fr.N);
+  const tlStr = tl ? (" · Δ_tr=" + tl.relative_loss.toExponential(1)) : "";
   $("statsB").innerHTML=`<div class="stat"><div class="k">N / iters${tl?" / loss":""}</div><div class="v">${fr.N} / ${fr.iters}${tlStr}</div></div><div class="stat"><div class="k">‖R‖∞</div><div class="v">${fr.res_EL_inf.toExponential(1)}</div></div>`;
 }
 
@@ -1433,7 +1439,7 @@ function drawPanelC(){
     hitState.panelC.push({ bond: i, entropy: v, x0: bx/d, x1: (bx+bwidth)/d });
   });
   ctx.strokeStyle="rgba(167,139,250,.85)";ctx.lineWidth=1.4*d;ctx.beginPath();S.forEach((v,i)=>{const x=p+i*bw+bw*.5,y=h-p-(v/maxS)*(h-2*p)*.72;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke();
-  if(baselineData?.panel_c?.bond_entropies?.length){
+  if(baselineData && baselineData.panel_c && baselineData.panel_c.bond_entropies && baselineData.panel_c.bond_entropies.length){
     const bS = baselineData.panel_c.bond_entropies.map(v=>Math.max(0,v));
     const bMax = Math.max(maxS, ...bS);
     const bBw = (w-2*p)/Math.max(1,bS.length);
@@ -1538,7 +1544,6 @@ $("cvD").addEventListener("pointermove", ev => {
   }else hideTip();
 });
 $("cvD").addEventListener("pointerleave", hideTip);
-
 $("cvA").addEventListener("click", ev => {
   const rect = ev.target.getBoundingClientRect();
   const mx = ev.clientX - rect.left, my = ev.clientY - rect.top;
@@ -1549,9 +1554,8 @@ $("cvA").addEventListener("click", ev => {
   }
   if(best){
     selectedHodgeVertex = (selectedHodgeVertex === best.node) ? null : best.node;
-    updateSel3DBanner();
-    renderAll();
-    if(selectedHodgeVertex !== null) toast(`Selected Vertex #${best.node} (Synced to 3D Hodge)`);
+    updateSel3DBanner(); renderAll();
+    if(selectedHodgeVertex !== null) toast("Selected Vertex #" + best.node + " (Synced to 3D Hodge)");
   }
 });
 $("cvD").addEventListener("click", ev => {
@@ -1560,12 +1564,10 @@ $("cvD").addEventListener("click", ev => {
   const hit = hitState.panelD.find(b => mx >= b.x0 - 1 && mx <= b.x1 + 1);
   if(hit){
     selectedPepsEdge = (selectedPepsEdge === hit.edge) ? null : hit.edge;
-    updateSel3DBanner();
-    renderAll();
-    if(selectedPepsEdge !== null) toast(`Selected Simplex Cut #${hit.edge} (Synced to 3D PEPS)`);
+    updateSel3DBanner(); renderAll();
+    if(selectedPepsEdge !== null) toast("Selected Simplex Cut #" + hit.edge + " (Synced to 3D PEPS)");
   }
 });
-
 
 function markRuntimeLoaded(panelsUpdated=true){
   runtimeLive = true;
@@ -1581,9 +1583,7 @@ function markRuntimeLoaded(panelsUpdated=true){
 function renderClaimSummary(claims){
   const box=$("claimSummary"); if(!box) return;
   const rawList = Array.isArray(claims) ? claims : (Array.isArray(DATA?.claims) ? DATA.claims : []);
-  const list = auditClaimFilter === "all" ? rawList : (auditClaimFilter === "passed"
-    ? rawList.filter(c => c.status === "PASSED" || c.status === "PROVED")
-    : rawList.filter(c => c.status !== "PASSED" && c.status !== "PROVED"));
+  const list = auditClaimFilter === "all" ? rawList : (auditClaimFilter === "passed" ? rawList.filter(c => c.status === "PASSED" || c.status === "PROVED") : rawList.filter(c => c.status !== "PASSED" && c.status !== "PROVED"));
   if(!list.length){ box.innerHTML='<div class="claim-total">No runtime claims loaded</div>'; return; }
   const counts={}; list.forEach(c=>counts[c.status]=(counts[c.status]||0)+1);
   const order=["FAILED","OUT_OF_TOLERANCE","INCONCLUSIVE","UNTESTED","PASSED","PROVED"];
@@ -1815,11 +1815,10 @@ $("metroMode").onchange = () => {
 };
 
 
-// 4. v3 Upgrades: Raycasting, Cross-Section Slice, URL Hash Sync, Baseline Pin, Audit Filters & Context Recovery
 let baselineData = null;
 let selectedHodgeVertex = null, selectedPepsEdge = null, selectedPepsNode = null;
 let auditClaimFilter = "all";
-let clipPlane3D = null, raycaster3D = null, mouse3D = null, pickables3D = [];
+let clipPlane3D = null, raycaster3D = null, mouse3D = null;
 
 function togglePinBaseline(){
   const btn = $("btnPinBaseline");
@@ -1856,11 +1855,8 @@ function applyUrlHash(){
     if(p.get("metro") && $("metroMode")) $("metroMode").value = p.get("metro");
     if(p.get("state")) sym3D = p.get("state");
     if(p.get("mode")) mode3D = p.get("mode");
-    if(p.get("view") === "3d"){
-      switchTopTab("3d");
-    } else if(p.get("view") === "log"){
-      switchTopTab("log");
-    }
+    if(p.get("view") === "3d") switchTopTab("3d");
+    else if(p.get("view") === "log") switchTopTab("log");
   }catch(_){}
 }
 
@@ -1868,7 +1864,7 @@ function copyShareUrl(){
   syncUrlHash();
   const url = location.href;
   if(navigator.clipboard?.writeText){
-    navigator.clipboard.writeText(url).then(() => toast("Copied deep link to clipboard")).catch(() => toast(url));
+    navigator.clipboard.writeText(url).then(() => toast("Copied deep link")).catch(() => toast(url));
   } else {
     toast(url);
   }
@@ -1878,9 +1874,9 @@ function updateSel3DBanner(){
   const b = $("sel3dBanner"), t = $("sel3dText");
   if(!b || !t) return;
   const parts = [];
-  if(selectedHodgeVertex !== null) parts.push(`Hodge V#${selectedHodgeVertex}`);
-  if(selectedPepsNode !== null) parts.push(`PEPS Node #${selectedPepsNode}`);
-  if(selectedPepsEdge !== null) parts.push(`Simplex Cut #${selectedPepsEdge}`);
+  if(selectedHodgeVertex !== null) parts.push("Hodge V#" + selectedHodgeVertex);
+  if(selectedPepsNode !== null) parts.push("PEPS Node #" + selectedPepsNode);
+  if(selectedPepsEdge !== null) parts.push("Simplex Cut #" + selectedPepsEdge);
   if(parts.length){
     t.textContent = "Pinned Selection: " + parts.join(" · ");
     b.classList.add("show");
@@ -1906,8 +1902,8 @@ function setAuditClaimFilter(filter, btn){
   if(lastAuditText){
     const lines = lastAuditText.split("\n");
     if(filter === "all") $("auditModalBody").textContent = lastAuditText;
-    else if(filter === "attention") $("auditModalBody").textContent = lines.filter(l => /\[(FAIL|CHECK|OUT_OF_TOLERANCE|INCONCLUSIVE|UNTESTED)\]/.test(l) || l.startsWith("---") || l.startsWith("===")).join("\n");
-    else $("auditModalBody").textContent = lines.filter(l => /\[(PASS|PASSED|PROVED)\]/.test(l) || l.startsWith("---") || l.startsWith("===")).join("\n");
+    else if(filter === "attention") $("auditModalBody").textContent = lines.filter(l => l.indexOf("[FAIL]") >= 0 || l.indexOf("[CHECK]") >= 0 || l.indexOf("OUT_OF_TOLERANCE") >= 0 || l.startsWith("---") || l.startsWith("===")).join("\n");
+    else $("auditModalBody").textContent = lines.filter(l => l.indexOf("[PASS]") >= 0 || l.indexOf("PASSED") >= 0 || l.indexOf("PROVED") >= 0 || l.startsWith("---") || l.startsWith("===")).join("\n");
   }
 }
 
@@ -1936,7 +1932,7 @@ function updateSlice3D(val){
   } else {
     renderer.localClippingEnabled = true;
     clipPlane3D.constant = v / 10;
-    $("vSliceY").textContent = `y ≤ ${(v/10).toFixed(1)}`;
+    $("vSliceY").textContent = "y ≤ " + (v/10).toFixed(1);
   }
 }
 
@@ -1998,7 +1994,6 @@ function init3D(){
   renderer.clippingPlanes = [clipPlane3D];
   raycaster3D = new THREE.Raycaster();
   mouse3D = new THREE.Vector2();
-
   renderer.domElement.addEventListener("webglcontextlost", e => {
     e.preventDefault();
     $("ctxLostBanner")?.classList.add("show");
@@ -2009,7 +2004,6 @@ function init3D(){
     logEvent("WebGL context restored.", "ok");
     resize3D();
   });
-
   orbit = new THREE.OrbitControls(camera, renderer.domElement);
   orbit.enableDamping = true; orbit.dampingFactor = 0.05; orbit.minDistance = 2.0; orbit.maxDistance = 28.0;
   camGoalPos = new THREE.Vector3(0, 2.8, 8.8); camGoalLook = new THREE.Vector3(0, 0, 0);
@@ -2104,20 +2098,18 @@ function init3D(){
   });
   meraRings = [1.95, 2.75, 3.45].map((r, i) => { const m = new THREE.Mesh(new THREE.TorusGeometry(r, 0.025, 10, 64), new THREE.MeshBasicMaterial({ color: i === 1 ? 0xf43f5e : 0x38bdf8, transparent: true, opacity: 0.45 })); m.rotation.x = Math.PI / 2; gPEPS.add(m); return m; });
 
-  // Tag Soliton Shells & Quark Triad for 3D Raycast Inspection
   zoneSpheres.forEach((m, i) => {
-    m.userData = { kind: "shell", zoneIdx: i + 1, ds: 4 - i, label: `Simplicial Zone ${i+1} (d_s=${4-i})` };
+    m.userData = { kind: "shell", zoneIdx: i + 1, ds: 4 - i, label: "Simplicial Zone " + (i+1) + " (d_s=" + (4-i) + ")" };
   });
   fluxCyls.forEach(({ qM }, q) => {
-    qM.userData = { kind: "quark", color: ["Red (u/d)", "Green (u/d)", "Blue (s/c)"][q], label: `K₃ Color Node #${q+1}` };
+    qM.userData = { kind: "quark", color: ["Red (u/d)", "Green (u/d)", "Blue (s/c)"][q], label: "K₃ Color Node #" + (q+1) };
   });
   pepsNodes.forEach((m, i) => {
-    m.userData = { kind: "pepsNode", nodeIdx: i, label: `Sheaf-PEPS Vertex #${i}` };
+    m.userData = { kind: "pepsNode", nodeIdx: i, label: "Sheaf-PEPS Vertex #" + i };
   });
   pepsEdges.forEach((c, i) => {
-    c.userData = { kind: "pepsEdge", edgeIdx: i, label: `Simplex Cut #${i} (${i<3?"Boundary Cut":"Interior"})` };
+    c.userData = { kind: "pepsEdge", edgeIdx: i, label: "Simplex Cut #" + i + " (" + (i<3?"Boundary Cut":"Interior") + ")" };
   });
-
   function raycast3DAt(ev){
     if(activeView !== "3d" || !inited3D) return null;
     const rect = renderer.domElement.getBoundingClientRect();
@@ -2134,21 +2126,20 @@ function init3D(){
     const hits = raycaster3D.intersectObjects(targets, false);
     return hits.length ? hits[0].object : null;
   }
-
   stage3dEl.addEventListener("pointermove", ev => {
     const obj = raycast3DAt(ev);
     if(!obj || !obj.userData?.kind){ hideTip(); return; }
     const u = obj.userData;
     if(u.kind === "hodgeVertex"){
-      showTip(ev, `<div class="tt-hdr">3D Hodge Vertex #${u.vertex}</div>Fiedler Rank: <span class="tt-val">${u.rank}</span><br/>Partition: <span class="tt-val">${u.side}</span><br/><i>Click to pin across 2D/3D</i>`);
+      showTip(ev, `<div class="tt-hdr">3D Hodge Vertex #${u.vertex}</div>Fiedler Rank: <span class="tt-val">${u.rank}</span><br/>Partition: <span class="tt-val">${u.side}</span>`);
     } else if(u.kind === "pepsEdge"){
       const frD = DATA?.panel_d?.frames?.[Math.min(pbState.frame, (DATA?.panel_d?.frames?.length||1)-1)];
       const spec = frD?.lambda_spectra?.[u.edge] || [];
-      showTip(ev, `<div class="tt-hdr">${u.label}</div>λ_i: <span class="tt-val">${spec.map(x=>x.toFixed(3)).join(", ")}</span><br/><i>Click to highlight in Panel D</i>`);
+      showTip(ev, `<div class="tt-hdr">${u.label}</div>λ_i: <span class="tt-val">${spec.map(x=>x.toFixed(3)).join(", ")}</span>`);
     } else if(u.kind === "pepsNode"){
-      showTip(ev, `<div class="tt-hdr">${u.label}</div>Tetrahedral Complex K₄<br/><i>Click to pin vertex</i>`);
+      showTip(ev, `<div class="tt-hdr">${u.label}</div>Tetrahedral Complex K₄`);
     } else if(u.kind === "quark"){
-      showTip(ev, `<div class="tt-hdr">${u.label}</div>Color Charge: <span class="tt-val">${u.color}</span><br/>SU(3)_c Triad Core`);
+      showTip(ev, `<div class="tt-hdr">${u.label}</div>Color Charge: <span class="tt-val">${u.color}</span>`);
     } else if(u.kind === "shell"){
       const st = CANONICAL_21.find(s => s.sym === sym3D) || CANONICAL_21[0];
       showTip(ev, `<div class="tt-hdr">${u.label}</div>Occupation Z_${u.zoneIdx}: <span class="tt-val">${st.zones[u.zoneIdx-1]}</span>`);
@@ -2170,7 +2161,6 @@ function init3D(){
       updateSel3DBanner(); sync3DFromData();
     }
   });
-
   // Double-click / Double-tap Excitation Pulse on 3D Canvas
   let last3DTap = 0;
   stage3dEl.addEventListener("dblclick", () => trigger3DPulse());
@@ -2198,7 +2188,6 @@ function rebuildKnot3D(P = 1, Q = 3){
 
 function sync3DFromData(){
   if(!inited3D) return;
-  // Sync Panel A + Frame Scrubber -> 16V Hodge Complex & Fiedler Sweep
   while(gHodge.children.length) gHodge.remove(gHodge.children[0]);
   const A = DATA?.panel_a;
   if(A){
@@ -2221,7 +2210,6 @@ function sync3DFromData(){
     const sweepSlice = perm.slice(0, Math.max(2, activeCutoff));
     if(sweepSlice.length) gHodge.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(sweepSlice.map(v => nodes[v].position.clone())), new THREE.LineBasicMaterial({ color: 0xfbbf24 })));
   }
-  // Sync Panel D -> PEPS Edge Cylinder Thickness & Selection Highlight
   const frD = DATA?.panel_d?.frames?.[Math.min(pbState.frame, (DATA?.panel_d?.frames?.length||1)-1)];
   if(frD?.lambda_spectra?.length && pepsEdges.length){
     pepsEdges.forEach((cyl, i) => {

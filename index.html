@@ -1045,13 +1045,13 @@ body.light-theme .lsub-btn.on{background:#6d28d9;color:#ffffff;border-color:#6d2
   <div class="tb-group">
     <div class="glass-pill">
       <button class="eng-btn on" id="tabViz">2D Panels (4)</button>
-      <button class="eng-btn" id="tab3D">3D WebGL (9)</button>
+      <button class="eng-btn" id="tab3D">3D WebGL (10)</button>
       <button class="eng-btn" id="tabGuide">Math Guide (21)</button>
-      <button class="eng-btn" id="tabLabs">Sim Labs (7)</button>
+      <button class="eng-btn" id="tabLabs">Sim Labs (8)</button>
       <button class="eng-btn" id="tabLog">Log</button>
     </div>
     <div class="glass-pill" id="mode3dPill">
-      <select id="mode3dSel" title="Select 3D WebGL Regime (Keys 1–9)">
+      <select id="mode3dSel" title="Select 3D WebGL Regime (Keys 1–0)">
         <option value="d">1 · Charged Hadronic Soliton &amp; (P,Q) Knot (d)</option>
         <option value="c">2 · Neutral 4-Zone Hadronic Soliton (c)</option>
         <option value="b">3 · Massless Photon (l=0) &amp; UV Cutoff (b)</option>
@@ -1061,6 +1061,7 @@ body.light-theme .lsub-btn.on{background:#6d28d9;color:#ffffff;border-color:#6d2
         <option value="k">7 · Kontrabarie RF Cavity &amp; Dim-8 EFT (k)</option>
         <option value="m">8 · Galactic Proca BEC Halo &amp; Rotation (m)</option>
         <option value="g">9 · 3D Tetrahedral Sheaf-PEPS &amp; Radial MERA (g)</option>
+        <option value="f">10 · Field ↔ Particle Interaction Field (f)</option>
       </select>
     </div>
     <div class="glass-pill tb-scrubber" title="Scrub KKT ladder &amp; PEPS evolution frames (Space = play/pause, ←/→ = step)">
@@ -1092,10 +1093,10 @@ body.light-theme .lsub-btn.on{background:#6d28d9;color:#ffffff;border-color:#6d2
       <div id="ctxLostBanner">WebGL Context Lost — Restoring GPU Surface...</div>
     </div>
 
-    <div id="dock3dWrap">
+    <div id="dock3dWrap" class="min">
       <div class="dhdr" id="dock3dHdr" title="Tap to Minimize / Expand">
-        <span id="dock3dTitle">3D Analytics · Cat C · Charged Soliton</span>
-        <span id="dock3dChevron">&#9660;</span>
+        <span id="dock3dTitle">3D Analytics · Minimized</span>
+        <span id="dock3dChevron">&#9650;</span>
       </div>
       <div id="dock3dBody">
         <div id="dock3dChartBox"><canvas id="chart3d"></canvas></div>
@@ -1150,7 +1151,8 @@ body.light-theme .lsub-btn.on{background:#6d28d9;color:#ffffff;border-color:#6d2
           <button type="button" class="lsub-btn" data-lab="qwalk" onclick="switchLabTab('qwalk')">4 · Dirac Quantum Walk</button>
           <button type="button" class="lsub-btn" data-lab="astro" onclick="switchLabTab('astro')">5 · GW Echo &amp; Halo</button>
           <button type="button" class="lsub-btn" data-lab="pyrepl" onclick="switchLabTab('pyrepl')">6 · Python REPL</button>
-          <button type="button" class="lsub-btn" data-lab="chal" onclick="switchLabTab('chal')">7 · Challenges (<span id="chalScoreBadge">0/7</span>)</button>
+          <button type="button" class="lsub-btn" data-lab="chal" onclick="switchLabTab('chal')">7 · Challenges (<span id="chalScoreBadge">0/8</span>)</button>
+          <button type="button" class="lsub-btn" data-lab="fieldparticle" onclick="switchLabTab('fieldparticle')">8 · Field ↔ Particle</button>
         </div>
       </div>
 
@@ -1364,12 +1366,52 @@ print(f"Smallest Non-Zero Dirac Singular Value = {np.min(np.abs(evals[np.abs(eva
         </div>
       </div>
 
+      <!-- LAB 8: FIELD ↔ PARTICLE INTERACTION SANDBOX -->
+      <div class="lab-body" id="lab_fieldparticle">
+        <div class="lab-left">
+          <canvas class="lab-cv" id="cvLabFieldParticle"></canvas>
+          <div class="stats" id="statsLabFieldParticle"></div>
+        </div>
+        <div class="lab-right">
+          <span class="strat-pill strat-alg">FIELD ↔ PARTICLE DYNAMICS SANDBOX</span>
+          <div class="formula-box">aᵢ = −(qᵢ/mᵢ)∇Φ(xᵢ) + a<sub>pp</sub> &nbsp;|&nbsp; ∂Φ/∂t = D∇²Φ + S<sub>ext</sub> + S<sub>particles</sub></div>
+          <div class="help">A general-purpose layer for testing <b>discrete particles or cellular agents inside a continuous/discretized field</b>. Particles sample the local field and can optionally feed a source term back into it. The core field and particle states remain separate so coupling can be switched off for passive-probe experiments.</div>
+          <div class="grid2">
+            <div class="ctl"><label>Particle Behaviour <output id="oFpMode">Agent</output></label>
+              <select id="selFpMode" onchange="resetFieldParticleLab()">
+                <option value="probe">Passive Probe</option>
+                <option value="agent" selected>Responsive Agent</option>
+                <option value="source">Active Source</option>
+              </select>
+            </div>
+            <div class="ctl"><label>Particle Count <output id="oFpCount">32</output></label><input type="range" id="iFpCount" min="4" max="80" step="4" value="32" oninput="resetFieldParticleLab()"></div>
+          </div>
+          <div class="grid2">
+            <div class="ctl"><label>Field Strength <output id="oFpField">1.0</output></label><input type="range" id="iFpField" min="0.2" max="2.5" step="0.1" value="1.0" oninput="document.getElementById('oFpField').textContent=Number(this.value).toFixed(1)"></div>
+            <div class="ctl"><label>Field ↔ Particle Coupling <output id="oFpCouple">0.65</output></label><input type="range" id="iFpCouple" min="0" max="1" step="0.05" value="0.65" oninput="document.getElementById('oFpCouple').textContent=Number(this.value).toFixed(2)"></div>
+            <div class="ctl"><label>Particle Interaction <output id="oFpInteract">0.35</output></label><input type="range" id="iFpInteract" min="0" max="1" step="0.05" value="0.35" oninput="document.getElementById('oFpInteract').textContent=Number(this.value).toFixed(2)"></div>
+            <div class="ctl"><label>Particle Source Strength <output id="oFpSource">0.80</output></label><input type="range" id="iFpSource" min="0" max="2" step="0.05" value="0.80" oninput="document.getElementById('oFpSource').textContent=Number(this.value).toFixed(2)"></div>
+          </div>
+          <div class="grid3">
+            <button type="button" class="primary" onclick="resetFieldParticleLab()">Reset Particles</button>
+            <button type="button" onclick="toggleFieldParticlePause()" id="btnFpPause">Pause</button>
+            <button type="button" onclick="stepFieldParticleLab()">Step</button>
+          </div>
+          <div class="grid3">
+            <button type="button" onclick="setFieldParticlePreset('waves')">Travelling Waves</button>
+            <button type="button" onclick="setFieldParticlePreset('doublewell')">Double Well</button>
+            <button type="button" onclick="setFieldParticlePreset('vortex')">Vortex Field</button>
+          </div>
+          <div class="note-box"><b>Interaction modes:</b> <b>Probe</b> samples the field without modifying it; <b>Agent</b> responds to the local gradient and short-range particle interactions; <b>Source</b> additionally deposits a local source term into the field. With coupling at 0, particles are read-only with respect to the field.</div>
+        </div>
+      </div>
+
       <!-- LAB 7: GUIDED HYPOTHESIS CHALLENGES -->
       <div class="lab-body" id="lab_chal">
         <div class="lab-left" style="overflow-y:auto" id="chalListCol"></div>
         <div class="lab-right">
           <span class="strat-pill strat-emp">INTERACTIVE LAB CHALLENGES</span>
-          <div class="help">Complete hands-on physics, sheaf cohomology, and quantum algorithm challenges across the 7 labs. Progress updates automatically as you discover the target states!</div>
+          <div class="help">Complete hands-on physics, sheaf cohomology, quantum algorithm, and field-particle challenges across the 8 labs. Progress updates automatically as you discover the target states!</div>
           <div class="metric"><span>Completed Challenges</span><b class="e" id="chalTotalMetric">0 / 7</b></div>
           <button type="button" class="danger" onclick="resetChallenges()">Reset Challenge Progress</button>
           <div class="note-box">
@@ -1407,7 +1449,7 @@ print(f"Smallest Non-Zero Dirac Singular Value = {np.min(np.abs(evals[np.abs(eva
   </main>
 <aside id="hud">
   <div class="hud-hdr">
-    <h1>EMG Metronic Lab<small>7-Tier Audit · 2D Panels · 3D WebGL (9)</small></h1>
+    <h1>EMG Metronic Lab<small>Field ↔ Particle 3D · 7-Tier Audit · 2D Panels</small></h1>
     <button id="mobileCloseHud" type="button" onclick="toggleMobileHud(false)">&#10005;</button>
   </div>
   <div class="help">Non-blocking Pyodide + SciPy Web Worker with frame scrubbing, hover telemetry, and provenance export.</div>
@@ -1516,6 +1558,43 @@ print(f"Smallest Non-Zero Dirac Singular Value = {np.min(np.abs(evals[np.abs(eva
     <div id="ctl3dPEPS" class="hidden" style="display:flex;flex-direction:column;gap:5px">
       <h2>3D Tetrahedral Sheaf-PEPS &amp; MERA</h2>
       <div class="ctl"><label>Bond Dimension &chi; <output id="vPEPSChi">6</output></label><input type="range" id="sPEPSChi" min="2" max="16" step="1" value="6" oninput="updatePEPS3D()"></div>
+    </div>
+
+    <div id="ctl3dFieldParticle" class="hidden" style="display:flex;flex-direction:column;gap:5px">
+      <h2>Field ↔ Particle Main Simulation</h2>
+      <div class="grid2">
+        <div class="ctl"><label>Particle Behaviour <output id="vFp3Mode">Agent</output></label>
+          <select id="sFp3Mode" onchange="resetFieldParticle3D()">
+            <option value="probe">Passive Probe</option>
+            <option value="agent" selected>Responsive Agent</option>
+            <option value="source">Active Source</option>
+          </select>
+        </div>
+        <div class="ctl"><label>Particles <output id="vFp3Count">72</output></label><input type="range" id="sFp3Count" min="8" max="180" step="2" value="72" oninput="resetFieldParticle3D()"></div>
+        <div class="ctl"><label>Field Strength <output id="vFp3Field">1.0</output></label><input type="range" id="sFp3Field" min="0.2" max="2.5" step="0.1" value="1.0" oninput="updateFieldParticle3DControls()"></div>
+        <div class="ctl"><label>Coupling <output id="vFp3Couple">0.65</output></label><input type="range" id="sFp3Couple" min="0" max="1" step="0.05" value="0.65" oninput="updateFieldParticle3DControls()"></div>
+        <div class="ctl"><label>Particle Interaction <output id="vFp3Interact">0.35</output></label><input type="range" id="sFp3Interact" min="0" max="1" step="0.05" value="0.35" oninput="updateFieldParticle3DControls()"></div>
+        <div class="ctl"><label>Source Strength <output id="vFp3Source">0.80</output></label><input type="range" id="sFp3Source" min="0" max="2" step="0.05" value="0.80" oninput="updateFieldParticle3DControls()"></div>
+      </div>
+      <div class="grid3">
+        <button type="button" onclick="setFieldParticle3DPreset('waves')">Travelling Waves</button>
+        <button type="button" onclick="setFieldParticle3DPreset('doublewell')">Double Well</button>
+        <button type="button" onclick="setFieldParticle3DPreset('vortex')">Vortex</button>
+      </div>
+      <div class="metric"><span>3D Field Energy</span><b class="e" id="mFp3Energy">—</b></div>
+      <div class="metric"><span>Particle Mean Speed</span><b class="c" id="mFp3Speed">—</b></div>
+      <div class="ctl"><label>Tracked Particle <output id="vFp3Track">1</output></label><input type="range" id="sFp3Track" min="0" max="41" step="1" value="0" oninput="updateFieldParticle3DControls()"></div>
+      <div class="metric"><span>Live equation</span><b class="c" id="mFp3Equation" style="font-size:9px">a = −(q/m)∇Φ + a<sub>topo</sub> + a<sub>pp</sub> + a<sub>damp</sub></b></div>
+      <div class="metric"><span>Tracked EMG state</span><b class="e" id="mFp3State">—</b></div>
+      <div class="metric"><span>Φ / |∇Φ|</span><b class="c" id="mFp3Phi">—</b></div>
+      <div class="metric"><span>Field acceleration</span><b class="c" id="mFp3FieldAcc">—</b></div>
+      <div class="metric"><span>Hodge split</span><b class="e" id="mFp3Hodge">—</b></div>
+      <div class="metric"><span>Total acceleration</span><b class="e" id="mFp3TotalAcc">—</b></div>
+      <div class="grid2">
+        <button type="button" id="btnFp3Hodge" onclick="toggleFp3Hodge()">Hide Hodge Sectors</button>
+        <button type="button" onclick="fp3HodgePulse()">Pulse Decomposition</button>
+      </div>
+      <div style="font-size:8px;line-height:1.35;color:var(--muted);padding:3px 0">Cyan = exact/gradient · violet = coexact/circulation · amber = harmonic zero-mode · red = total field force · yellow = velocity. The decomposition is evaluated on the same live 3D field used by the particle integrator.</div>
     </div>
 
     <h2>Shared 3D Dynamics</h2>
@@ -3127,9 +3206,9 @@ let scene, camera, renderer, composer, orbit;
 let gCorpuscle, gPhoton, gBH, gKKT, gHodge, gKontra, gHalo, gPEPS;
 let zoneSpheres = [], knotMesh = null, quarkGrp, fluxCyls = [], streamPts, eFieldGrp, eSpines = [];
 let eRibG, bRibG, wSeg = 220, wLen = 8.0, bhGrid, R_MIN = 0.45, R_PS = 1.35, echoRing, kktGrid;
-let pTube, kCav, kThrust, becSphere, galPts, pepsNodes = [], pepsEdges = [], meraRings = [], coreLight;
+let pTube, kCav, kThrust, becSphere, galPts, pepsNodes = [], pepsEdges = [], meraRings = [], coreLight, gFieldParticle;
 let camTrans = false, camGoalPos, camGoalLook;
-let mode3D = "d", sym3D = "p", spd3D = 1.0, op3D = 0.28, pulse3DEnergy = 0, inited3D = false, activeView = "viz";
+let mode3D = "f", sym3D = "p", spd3D = 1.0, op3D = 0.28, pulse3DEnergy = 0, inited3D = false, activeView = "3d";
 const vis3D = { knot: true, flux: true, quarks: true, shells: true };
 const phase3D = { kWave: 2.2, omega: 5.5, amp: 1.05, envWidth: 2.8 };
 let chart3dInst = null, clock3D = null, fps3DCount = 0, lastFps3DT = performance.now();
@@ -3143,7 +3222,8 @@ const MODE3D_NOTES = {
   h: ['Cat A · 16V Hodge Complex', '16-vertex simplicial complex driven by Panel A verifying <b>B&#8321;B&#8322; &equiv; 0</b> with cyan/red Fiedler coloring and gold snake path.'],
   k: ['Cat D · Kontrabarie & EFT', 'Whispering-gallery Poynting helix with live <b>Dim-8 EFT suppression (&omega;/&omega;_Pl)&sup2;</b> &mdash; DC &omega;=0 yields <b>f_conv &equiv; 0</b>.'],
   m: ['Ch. 11 · Galactic BEC Halo', 'Proca mesofield BEC solitonic core flattening the NFW cusp and producing flat rotation curves <b>v_flat</b>.'],
-  g: ['Cat G · Sheaf-PEPS & MERA', '3D tetrahedral Sheaf-PEPS driven live by Panel D Schmidt spectra + rotating isometric Radial MERA rings (<b>&Delta;_kin=2.0</b>).']
+  g: ['Cat G · Sheaf-PEPS & MERA', '3D tetrahedral Sheaf-PEPS driven live by Panel D Schmidt spectra + rotating isometric Radial MERA rings (<b>&Delta;_kin=2.0</b>).'],
+  f: ['Main · Field ↔ Particle Dynamics', 'Continuous/discretized 3D field with discrete particles sampling local gradients, interacting with one another, and optionally feeding source terms back into the field.']
 };
 
 function mkGlowTex(rgb){
@@ -3168,8 +3248,8 @@ function init3D(){
   const stage3dEl = $("stage3d");
   scene = new THREE.Scene(); scene.fog = new THREE.FogExp2(0x040710, 0.025);
   camera = new THREE.PerspectiveCamera(42, 1, 0.1, 120); camera.position.set(0, 2.8, 8.8);
-  renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); renderer.setClearColor(0x03060d, 1);
+  renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1)); renderer.setClearColor(0x03060d, 1);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.14;
   stage3dEl.appendChild(renderer.domElement);
@@ -3218,8 +3298,9 @@ function init3D(){
   coreLight = new THREE.PointLight(0xf43f5e, 2.2, 10); scene.add(coreLight);
 
   gCorpuscle = new THREE.Group(); gPhoton = new THREE.Group(); gBH = new THREE.Group(); gKKT = new THREE.Group();
-  gHodge = new THREE.Group(); gKontra = new THREE.Group(); gHalo = new THREE.Group(); gPEPS = new THREE.Group();
-  scene.add(gCorpuscle, gPhoton, gBH, gKKT, gHodge, gKontra, gHalo, gPEPS);
+  gHodge = new THREE.Group(); gKontra = new THREE.Group(); gHalo = new THREE.Group(); gPEPS = new THREE.Group(); gFieldParticle = new THREE.Group();
+  scene.add(gCorpuscle, gPhoton, gBH, gKKT, gHodge, gKontra, gHalo, gPEPS, gFieldParticle);
+  initFieldParticle3D();
 
   // Soliton Shells & Knot (d, c)
   zoneSpheres = [0.82, 1.65, 2.45, 3.25].map((r, i) => {
@@ -3464,16 +3545,17 @@ function sync3DFromData(){
 function set3DMode(m){
   mode3D = m; $("mode3dSel").value = m;
   if(!inited3D) return;
-  [gCorpuscle, gPhoton, gBH, gKKT, gHodge, gKontra, gHalo, gPEPS].forEach(g => g.visible = false);
+  [gCorpuscle, gPhoton, gBH, gKKT, gHodge, gKontra, gHalo, gPEPS, gFieldParticle].forEach(g => g.visible = false);
   gCorpuscle.visible = (m === "d" || m === "c"); gPhoton.visible = (m === "b"); gBH.visible = (m === "a");
   gKKT.visible = (m === "s"); gHodge.visible = (m === "h"); gKontra.visible = (m === "k");
-  gHalo.visible = (m === "m"); gPEPS.visible = (m === "g");
+  gHalo.visible = (m === "m"); gPEPS.visible = (m === "g"); gFieldParticle.visible = (m === "f");
 
   $("ctl3dSoliton").classList.toggle("hidden", !(m === "d" || m === "c" || m === "s"));
   $("ctl3dBH").classList.toggle("hidden", m !== "a");
   $("ctl3dKontra").classList.toggle("hidden", m !== "k");
   $("ctl3dHalo").classList.toggle("hidden", m !== "m");
   $("ctl3dPEPS").classList.toggle("hidden", m !== "g");
+  $("ctl3dFieldParticle").classList.toggle("hidden", m !== "f");
 
   const [st, nt] = MODE3D_NOTES[m];
   $("mode3dNote").innerHTML = `<div class="stratum">${st}</div><br>${nt}`;
@@ -3496,6 +3578,11 @@ function set3DMode(m){
   } else if(m === "k") updateKontra3D();
   else if(m === "m") updateHalo3D();
   else if(m === "g") updatePEPS3D();
+  else if(m === "f"){
+    $("m3State").textContent = `Field ↔ Particle · ${fp3Preset}`;
+    $("m3Mass").textContent = `${fp3Particles.length} agents · coupling ${fp3Couple().toFixed(2)}`;
+    updateFieldParticle3DControls();
+  }
   syncUrlHash();
 }
 
@@ -3536,6 +3623,296 @@ function stageParticle3D(sym){
   closeAuditModal(); toggleMobileHud(false);
   switchTopTab("3d");
   if(st){ set3DMode(st.mode); select3DParticle(sym); toast(`3D Staged ${st.name}`); }
+}
+
+
+// --- MAIN 3D FIELD ↔ PARTICLE DYNAMICS ---
+const FP3_GRID = 16, FP3_PARTICLE_DEFAULT = 72;
+let fp3Preset = "waves", fp3Particles = [], fp3FieldPts = null, fp3FieldColors = null, fp3TrailLines = null, fp3GradientLines = null, fp3FieldValues = null, fp3MathGroup = null, fp3GradArrow = null, fp3ForceArrow = null, fp3VelArrow = null, fp3HodgeExactLines = null, fp3HodgeCoexactLines = null, fp3HodgeHarmonicLines = null, fp3HodgeExactArrow = null, fp3HodgeCoexactArrow = null, fp3HodgeHarmonicArrow = null, fp3HodgeVisible = false, fp3HodgePulseAt = 0;
+let fp3HodgeDisc = null, fp3HodgeCache = null, fp3HodgeLastT = -1, fp3HodgeNextUpdate=0, fp3SimAccum=0, fp3Frame=0, fp3EMGStates=[];
+function fp3Mode(){ return $("sFp3Mode")?.value || "agent"; }
+function fp3Num(){ return +( $("sFp3Count")?.value || FP3_PARTICLE_DEFAULT ); }
+function fp3Strength(){ return +( $("sFp3Field")?.value || 1 ); }
+function fp3Couple(){ return +( $("sFp3Couple")?.value || .65 ); }
+function fp3Interact(){ return +( $("sFp3Interact")?.value || .35 ); }
+function fp3Source(){ return +( $("sFp3Source")?.value || .8 ); }
+function fp3Field(x,y,z,t=0,source=0){
+  const s=fp3Strength(), r2=x*x+y*y+z*z;
+  if(fp3Preset==="waves") return s*(.52*Math.sin(1.55*x-1.2*y+.95*z-t*1.7)+.24*Math.cos(2.1*x+.8*z+t*.8)+.95*Math.exp(-((x+1.45)**2+(y-.25)**2+(z-.65)**2)/1.25))+source;
+  if(fp3Preset==="doublewell") return s*(-1.35*Math.exp(-((x+1.35)**2+y*y+z*z)/1.35)-1.35*Math.exp(-((x-1.35)**2+y*y+z*z)/1.35)+.18*Math.cos(y*2.5))+source;
+  return s*(1.55*Math.atan2(z,x)/Math.PI+.38*Math.exp(-r2/4.5)*Math.sin(y*2.1-t)) + source;
+}
+function fp3Gradient(x,y,z,t){ const e=.045, f=fp3Field; return {x:(f(x+e,y,z,t)-f(x-e,y,z,t))/(2*e),y:(f(x,y+e,z,t)-f(x,y-e,z,t))/(2*e),z:(f(x,y,z+e,t)-f(x,y,z-e,t))/(2*e)}; }
+function fp3Color(v){ const q=Math.max(0,Math.min(1,.5+.42*Math.tanh(v))); return new THREE.Color().setHSL(.55-.48*q,.82,.48+.10*q); }
+function initFieldParticle3D(){
+  if(gFieldParticle.children.length) return;
+  const n=FP3_GRID**3, pos=new Float32Array(n*3), col=new Float32Array(n*3);
+  let k=0; for(let iz=0;iz<FP3_GRID;iz++) for(let iy=0;iy<FP3_GRID;iy++) for(let ix=0;ix<FP3_GRID;ix++){
+    const x=-3.0+6*ix/(FP3_GRID-1), y=-2.45+4.9*iy/(FP3_GRID-1), z=-3.0+6*iz/(FP3_GRID-1); pos[k*3]=x;pos[k*3+1]=y;pos[k*3+2]=z; col[k*3]=.2;col[k*3+1]=.6;col[k*3+2]=1;k++;
+  }
+  const geo=new THREE.BufferGeometry(); geo.setAttribute("position",new THREE.BufferAttribute(pos,3)); fp3FieldColors=new THREE.BufferAttribute(col,3); geo.setAttribute("color",fp3FieldColors);
+  fp3FieldPts=new THREE.Points(geo,new THREE.PointsMaterial({size:.065,vertexColors:true,transparent:true,opacity:.42,depthWrite:false,blending:THREE.AdditiveBlending}));
+  gFieldParticle.add(fp3FieldPts);
+  fp3FieldValues=new Float32Array(n);
+  const tGeo=new THREE.BufferGeometry(); tGeo.setAttribute("position",new THREE.BufferAttribute(new Float32Array(90*20*3),3));
+  fp3TrailLines=new THREE.LineSegments(tGeo,new THREE.LineBasicMaterial({color:0x8b5cf6,transparent:true,opacity:.38,depthWrite:false})); gFieldParticle.add(fp3TrailLines);
+  const gg=5, gp=new Float32Array(gg*gg*gg*6); let gi=0;
+  for(let iz=0;iz<gg;iz++)for(let iy=0;iy<gg;iy++)for(let ix=0;ix<gg;ix++){const x=-2.7+5.4*ix/(gg-1),y=-2.2+4.4*iy/(gg-1),z=-2.7+5.4*iz/(gg-1);gp[gi++]=x;gp[gi++]=y;gp[gi++]=z;gp[gi++]=x;gp[gi++]=y;gp[gi++]=z;}
+  const ggeo=new THREE.BufferGeometry();ggeo.setAttribute("position",new THREE.BufferAttribute(gp,3));fp3GradientLines=new THREE.LineSegments(ggeo,new THREE.LineBasicMaterial({color:0x38bdf8,transparent:true,opacity:.20,depthWrite:false}));gFieldParticle.add(fp3GradientLines);
+  fp3InitHodgeOverlay();
+  resetFieldParticle3D();
+}
+function resetFieldParticle3D(){
+  const n=fp3Num(),mode=fp3Mode(); fp3Particles=[]; fp3EMGStates=Array.from({length:n},(_,i)=>fp3EMGState(i));
+  for(let i=0;i<n;i++){const a=2*Math.PI*((i*0.6180339887)%1), r=.55+2.05*(((i*0.3819660113)%1)**.7);fp3Particles.push({x:Math.cos(a)*r*.92,y:(.5-((i*0.754877666)%1))*3.9,z:Math.sin(a)*r*.92,vx:0,vy:0,vz:0,q:mode==="probe"?.8:(i%2?1:-1),mass:.8+.8*((i*0.271828)%1),trail:[]});}
+  for(const p of fp3Particles)p.trail.push([p.x,p.y,p.z]);
+  updateFieldParticle3DControls();
+}
+function setFieldParticle3DPreset(kind){fp3Preset=kind;resetFieldParticle3D();}
+function updateFieldParticle3DControls(){
+  const mode=fp3Mode(); $("vFp3Mode").textContent=mode==="probe"?"Probe":mode==="source"?"Source":"Agent"; $("vFp3Count").textContent=fp3Num();
+  const track=$("sFp3Track"); if(track){ track.max=String(Math.max(0,fp3Num()-1)); if(+track.value>+track.max) track.value=track.max; }
+  $("vFp3Track").textContent=String((+(track?.value||0))+1);
+  $("vFp3Field").textContent=fp3Strength().toFixed(1); $("vFp3Couple").textContent=fp3Couple().toFixed(2); $("vFp3Interact").textContent=fp3Interact().toFixed(2); $("vFp3Source").textContent=fp3Source().toFixed(2);
+}
+function fp3EMGState(i){
+  const st=CANONICAL_21[i%CANONICAL_21.length];
+  const calc=calcCanonicalStateJS(st);
+  return {st,calc,qx:Number(calc.qx)||0,mev:Number(calc.mev)||1,P:Number(st.P)||1,Q:Number(st.Q)||1,k:Number(st.k)||1,kap:Number(st.kap)||0,x:Number(st.x)||0};
+}
+function fp3EMGPotential(x,y,z,t,src=0){
+  const r=Math.hypot(x,y,z)+1e-6, s=fp3Strength();
+  const radial=Math.exp(-r*r/4.8);
+  const kkt=1/(1+0.42*r*r);
+  const metronic=Math.cos(2.2*r-t*.55)*radial;
+  const topological=Math.sin(2.0*Math.atan2(z,x)+1.15*y-t*.75);
+  const proca=Math.exp(-r/1.35)*Math.cos(2.6*r-t);
+  return s*(0.34*kkt+0.28*metronic+0.20*topological+0.18*proca)+src;
+}
+function fp3EMGGradient(x,y,z,t){
+  const e=.035, f=fp3EMGPotential;
+  return {x:(f(x+e,y,z,t)-f(x-e,y,z,t))/(2*e),y:(f(x,y+e,z,t)-f(x,y-e,z,t))/(2*e),z:(f(x,y,z+e,t)-f(x,y,z-e,t))/(2*e)};
+}
+function stepFieldParticle3D(dt){
+  if(!fp3Particles.length) resetFieldParticle3D();
+  const t=clock3D?.getElapsedTime()||0, coupling=fp3Couple(), interact=fp3Interact(), mode=fp3Mode(), source=fp3Source();
+  const useHodge=fp3HodgeVisible;
+  if(useHodge && (!fp3HodgeCache || t>=fp3HodgeNextUpdate)){ fp3ComputeDiscreteHodge(t); fp3HodgeNextUpdate=t+1.0; }
+  const srcs=mode==="source"?fp3Particles:[];
+  let energy=0;
+  for(let i=0;i<fp3Particles.length;i++){
+    const p=fp3Particles[i], emg=fp3EMGStates[i]||fp3EMGState(i), g=fp3EMGGradient(p.x,p.y,p.z,t);
+    // The particle charge/topology/mass are taken from the same canonical EMG state engine
+    // used by the 21-state audit, rather than from an independent toy-particle model.
+    const charge=emg.qx, massScale=Math.max(.25,Math.log1p(Math.abs(emg.mev)));
+    const ff=coupling*(charge===0?0.35:charge)/massScale;
+    // The actual force now uses the discrete Hodge projection of the EMG 1-form.
+    // Exact + coexact + harmonic are computed on the same sampled cell complex
+    // that is rendered in the Hodge overlay.
+    const hp=useHodge ? fp3HodgeAtParticle(p,t) : {exact:g,coexact:{x:0,y:0,z:0},harmonic:{x:0,y:0,z:0}};
+    const exactAx=-ff*hp.exact.x, exactAy=-ff*hp.exact.y, exactAz=-ff*hp.exact.z;
+    const coexactAx=-ff*hp.coexact.x, coexactAy=-ff*hp.coexact.y, coexactAz=-ff*hp.coexact.z;
+    const harmonicAx=-ff*hp.harmonic.x, harmonicAy=-ff*hp.harmonic.y, harmonicAz=-ff*hp.harmonic.z;
+    const fieldAx=exactAx+coexactAx+harmonicAx, fieldAy=exactAy+coexactAy+harmonicAy, fieldAz=exactAz+coexactAz+harmonicAz;
+    let topoAx=coexactAx, topoAy=coexactAy, topoAz=coexactAz;
+    const damp=mode==="agent"?.62:mode==="probe"?.22:.42;
+    const dampAx=-damp*p.vx, dampAy=-damp*p.vy, dampAz=-damp*p.vz;
+    let pairAx=0, pairAy=0, pairAz=0;
+    if(interact>0 && (fp3Frame%2===0)){
+      const stride=Math.max(1,Math.floor(fp3Particles.length/8));
+      for(let j=(i+1)%stride;j<fp3Particles.length;j+=stride)if(j!==i){
+        const q=fp3Particles[j],dx=p.x-q.x,dy=p.y-q.y,dz=p.z-q.z,r2=dx*dx+dy*dy+dz*dz+.08;
+        if(r2<1.4){const f=interact*.012/(r2*r2);pairAx+=dx*f;pairAy+=dy*f;pairAz+=dz*f;}
+      }
+    }
+    const ax=fieldAx+topoAx+pairAx+dampAx, ay=fieldAy+topoAy+pairAy+dampAy, az=fieldAz+topoAz+pairAz+dampAz;
+    p.math={phi:fp3EMGPotential(p.x,p.y,p.z,t),grad:g,exactAcc:{x:exactAx,y:exactAy,z:exactAz},coexactAcc:{x:coexactAx,y:coexactAy,z:coexactAz},harmonicAcc:{x:harmonicAx,y:harmonicAy,z:harmonicAz},fieldAcc:{x:fieldAx,y:fieldAy,z:fieldAz},topoAcc:{x:topoAx,y:topoAy,z:topoAz},pairAcc:{x:pairAx,y:pairAy,z:pairAz},dampAcc:{x:dampAx,y:dampAy,z:dampAz},totalAcc:{x:ax,y:ay,z:az},charge,massScale,mev:emg.mev,P:emg.P,Q:emg.Q,k:emg.k,kap:emg.kap};
+    p.vx=Math.max(-2.2,Math.min(2.2,p.vx+ax*dt));p.vy=Math.max(-2.2,Math.min(2.2,p.vy+ay*dt));p.vz=Math.max(-2.2,Math.min(2.2,p.vz+az*dt));
+    p.x+=p.vx*dt;p.y+=p.vy*dt;p.z+=p.vz*dt;
+    if(Math.abs(p.x)>3.05){p.x=Math.sign(p.x)*3.05;p.vx*=-.72;} if(Math.abs(p.y)>2.5){p.y=Math.sign(p.y)*2.5;p.vy*=-.72;} if(Math.abs(p.z)>3.05){p.z=Math.sign(p.z)*3.05;p.vz*=-.72;}
+    p.trail.push([p.x,p.y,p.z]);if(p.trail.length>20)p.trail.shift();
+    energy+=Math.abs(fp3EMGPotential(p.x,p.y,p.z,t))*Math.max(.25,Math.abs(emg.qx)+.25);
+  }
+  const positions=fp3FieldPts.geometry.attributes.position.array, colors=fp3FieldColors.array; let k=0;
+  for(let iz=0;iz<FP3_GRID;iz++)for(let iy=0;iy<FP3_GRID;iy++)for(let ix=0;ix<FP3_GRID;ix++){
+    const x=positions[k*3],y=positions[k*3+1],z=positions[k*3+2];let src=0;
+    if(srcs.length && (fp3Frame%4===0)){for(const p of srcs){const dx=x-p.x,dy=y-p.y,dz=z-p.z,rr=dx*dx+dy*dy+dz*dz;src+=source*p.q*Math.exp(-rr/1.6)*.012;}}
+    const v=fp3EMGPotential(x,y,z,t,src);fp3FieldValues[k]=v;const c=fp3Color(v);colors[k*3]=c.r;colors[k*3+1]=c.g;colors[k*3+2]=c.b;k++;
+  }
+  fp3FieldColors.needsUpdate=true;
+  if(useHodge || fp3Frame%4===0) updateFieldParticle3DMathOverlay(t);
+  const tp=fp3TrailLines.geometry.attributes.position.array;let ti=0;for(const p of fp3Particles){for(let j=1;j<p.trail.length;j++){const a=p.trail[j-1],b=p.trail[j];tp[ti++]=a[0];tp[ti++]=a[1];tp[ti++]=a[2];tp[ti++]=b[0];tp[ti++]=b[1];tp[ti++]=b[2];}}while(ti<tp.length)tp[ti++]=0;fp3TrailLines.geometry.attributes.position.needsUpdate=true;fp3TrailLines.geometry.setDrawRange(0,ti/3);
+  if(fp3Frame%4===0){ const gp=fp3GradientLines.geometry.attributes.position.array;let gi=0;for(let iz=0;iz<5;iz++)for(let iy=0;iy<5;iy++)for(let ix=0;ix<5;ix++){const x=-2.7+5.4*ix/4,y=-2.2+4.4*iy/4,z=-2.7+5.4*iz/4,g=fp3EMGGradient(x,y,z,t),L=.22/(Math.hypot(g.x,g.y,g.z)+.8);gp[gi++]=x;gp[gi++]=y;gp[gi++]=z;gp[gi++]=x+g.x*L;gp[gi++]=y+g.y*L;gp[gi++]=z+g.z*L;}fp3GradientLines.geometry.attributes.position.needsUpdate=true; }
+  let speed=0;for(const p of fp3Particles)speed+=Math.hypot(p.vx,p.vy,p.vz);speed/=Math.max(1,fp3Particles.length);$("mFp3Energy").textContent=Math.sqrt(energy/Math.max(1,fp3Particles.length)).toFixed(3);$("mFp3Speed").textContent=speed.toFixed(3);
+  if(!gFieldParticle.userData.particleMeshes || gFieldParticle.userData.particleMeshes.length!==fp3Particles.length || gFieldParticle.userData.particleMode!==mode){
+    (gFieldParticle.userData.particleMeshes||[]).forEach(m=>gFieldParticle.remove(m));
+    gFieldParticle.userData.particleMode=mode;
+    gFieldParticle.userData.particleMeshes=fp3Particles.map((p,i)=>{const emg=fp3EMGState(i),c=mode==="probe"?0x38bdf8:mode==="source"?0xfbbf24:(emg.qx>0?0xf43f5e:emg.qx<0?0xa78bfa:0x2dd4bf);const m=new THREE.Mesh(new THREE.SphereGeometry(.075,10,10),new THREE.MeshStandardMaterial({color:c,emissive:c,emissiveIntensity:1.8,transparent:true,opacity:.92}));gFieldParticle.add(m);return m;});
+  }
+  gFieldParticle.userData.particleMeshes.forEach((m,i)=>{const p=fp3Particles[i];m.position.set(p.x,p.y,p.z);m.scale.setScalar(1+Math.min(1.8,Math.hypot(p.vx,p.vy,p.vz)*.18));});
+}
+
+function fp3Arrow(dir, origin, color, scale=1){
+  const v=new THREE.Vector3(dir.x||0,dir.y||0,dir.z||0), L=v.length();
+  return {v,L,origin,color,scale};
+}
+function fp3InitDiscreteHodge(){
+  if(fp3HodgeDisc) return fp3HodgeDisc;
+  // Canonical EMG 16-complex from the audit's SimplicialSpectralAuditor.
+  // V=16, E=36, F=20; B1 and B2 use the exact orientations from EMG-Audit.py.
+  const V=16, lo=-2.55, hi=2.55;
+  const edges=[];
+  for(let i=0;i<V;i++){
+    edges.push([Math.min(i,(i+1)%V),Math.max(i,(i+1)%V)]);
+    edges.push([Math.min(i,(i+2)%V),Math.max(i,(i+2)%V)]);
+    if(i%4===0) edges.push([Math.min(i,(i+4)%V),Math.max(i,(i+4)%V)]);
+  }
+  const edgeKey=e=>e[0]+"|"+e[1], edgeSet=new Set(edges.map(edgeKey));
+  edges.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+  const eMap=new Map(edges.map((e,i)=>[edgeKey(e),i]));
+  const faces=[];
+  for(let i=0;i<V;i++)for(let j=i+1;j<V;j++)for(let k=j+1;k<V;k++){
+    if(edgeSet.has(edgeKey([i,j]))&&edgeSet.has(edgeKey([j,k]))&&edgeSet.has(edgeKey([i,k]))) faces.push([i,j,k]);
+  }
+  faces.sort((a,b)=>a[0]-b[0]||a[1]-b[1]||a[2]-b[2]);
+  const B1=Array.from({length:V},()=>new Float64Array(edges.length));
+  edges.forEach((e,i)=>{B1[e[0]][i]=-1;B1[e[1]][i]=1;});
+  const B2=Array.from({length:edges.length},()=>new Float64Array(faces.length));
+  faces.forEach((f,j)=>{
+    const e1=eMap.get(edgeKey([Math.min(f[0],f[1]),Math.max(f[0],f[1])]));
+    const e2=eMap.get(edgeKey([Math.min(f[1],f[2]),Math.max(f[1],f[2])]));
+    const e3=eMap.get(edgeKey([Math.min(f[0],f[2]),Math.max(f[0],f[2])]));
+    B2[e1][j]=1; B2[e2][j]=1; B2[e3][j]=-1;
+  });
+  const pos=[];
+  for(let i=0;i<V;i++){
+    const a=TWO_PI_JS*i/V;
+    // Same 16-vertex circular embedding used by the existing 3D Hodge complex.
+    pos.push({x:Math.cos(a)*2.55,y:0.52*Math.sin(2*a)+0.28*Math.cos(4*a),z:Math.sin(a)*2.55});
+  }
+  const edgeGeom=edges.map(([a,b])=>{
+    const A=pos[a],B=pos[b],dx=B.x-A.x,dy=B.y-A.y,dz=B.z-A.z,L=Math.hypot(dx,dy,dz)||1;
+    return {a,b,tx:dx/L,ty:dy/L,tz:dz/L,L,mx:(A.x+B.x)/2,my:(A.y+B.y)/2,mz:(A.z+B.z)/2};
+  });
+  const dot=(a,b)=>{let s=0;for(let i=0;i<a.length;i++)s+=a[i]*b[i];return s;};
+  const matMul=(A,B)=>{const m=A.length,n=B[0].length,k=B.length,R=Array.from({length:m},()=>new Float64Array(n));for(let i=0;i<m;i++)for(let q=0;q<k;q++){const av=A[i][q];if(!av)continue;for(let j=0;j<n;j++)R[i][j]+=av*B[q][j];}return R;};
+  const transpose=A=>A[0].map((_,j)=>A.map(r=>r[j]));
+  const Bt=transpose(B1), B2t=transpose(B2);
+  const L0=matMul(B1,Bt), L2=matMul(B2t,B2);
+  const solveReduced=(L,rhs,anchor=0)=>{
+    const n=L.length, ids=[];for(let i=0;i<n;i++)if(i!==anchor)ids.push(i);
+    const m=ids.length,A=Array.from({length:m},(_,i)=>{const row=new Float64Array(m+1);for(let j=0;j<m;j++)row[j]=L[ids[i]][ids[j]];row[m]=rhs[ids[i]];return row;});
+    for(let c=0;c<m;c++){
+      let piv=c;for(let r=c+1;r<m;r++)if(Math.abs(A[r][c])>Math.abs(A[piv][c]))piv=r;
+      if(Math.abs(A[piv][c])<1e-12)continue;
+      if(piv!==c){const tmp=A[c];A[c]=A[piv];A[piv]=tmp;}
+      const d=A[c][c];for(let j=c;j<=m;j++)A[c][j]/=d;
+      for(let r=0;r<m;r++)if(r!==c){const f=A[r][c];if(!f)continue;for(let j=c;j<=m;j++)A[r][j]-=f*A[c][j];}
+    }
+    const x=new Float64Array(n);for(let i=0;i<m;i++)x[ids[i]]=A[i][m];return x;
+  };
+  const B1B2=matMul(B1,B2);
+  const maxAbs=M=>{let z=0;for(const r of M)for(const v of r)z=Math.max(z,Math.abs(v));return z;};
+  fp3HodgeDisc={V,E:edges.length,F:faces.length,lo,hi,verts:pos,edges:edgeGeom,faces,B1,B2,L0,L2,solveReduced,dot,maxNilpotency:maxAbs(B1B2),edgeKey};
+  return fp3HodgeDisc;
+}
+function fp3ComputeDiscreteHodge(t){
+  const D=fp3InitDiscreteHodge(), ne=D.E, nf=D.F;
+  // A genuine 1-form on the EMG 16-complex: line-integrated EMG field.
+  // The first term is exact (dPhi); the azimuthal and metronic-winding terms
+  // supply the non-exact sectors that the discrete Hodge projector separates.
+  const alpha=new Float64Array(ne);
+  for(let i=0;i<ne;i++){
+    const e=D.edges[i], mx=e.mx,my=e.my,mz=e.mz, emg=fp3EMGGradient(mx,my,mz,t);
+    const r=Math.hypot(mx,my,mz)+1e-6;
+    const az={x:-my/(r*r),y:mx/(r*r),z:0};
+    const met={x:Math.sin(1.7*r-t*.55)*mx/(r+1),y:Math.cos(1.4*r+t*.35)*my/(r+1),z:Math.sin(1.9*r-t*.4)*mz/(r+1)};
+    const winding=.24*(1+.35*Math.sin(t*.7))*(Math.abs(Math.sin((i+1)*.71))+.35);
+    const vx=emg.x+.42*az.x+.16*met.x+winding*e.tz;
+    const vy=emg.y+.42*az.y+.16*met.y-winding*e.tx;
+    const vz=emg.z+.42*az.z+.16*met.z+winding*(e.tx-e.tz)*.5;
+    alpha[i]=(vx*e.tx+vy*e.ty+vz*e.tz)*e.L;
+  }
+  const rhs0=new Float64Array(D.V);for(let i=0;i<D.V;i++){let s=0;for(let e=0;e<ne;e++)s+=D.B1[i][e]*alpha[e];rhs0[i]=s;}
+  const phi=D.solveReduced(D.L0,rhs0,0), exact=new Float64Array(ne);
+  for(let e=0;e<ne;e++)for(let v=0;v<D.V;v++)exact[e]+=D.B1[v][e]*phi[v];
+  const residual=new Float64Array(ne);for(let e=0;e<ne;e++)residual[e]=alpha[e]-exact[e];
+  const rhs2=new Float64Array(nf);for(let f=0;f<nf;f++){let s=0;for(let e=0;e<ne;e++)s+=D.B2[e][f]*residual[e];rhs2[f]=s;}
+  const psi=D.solveReduced(D.L2,rhs2,0), coexact=new Float64Array(ne);
+  for(let e=0;e<ne;e++)for(let f=0;f<nf;f++)coexact[e]+=D.B2[e][f]*psi[f];
+  const harmonic=new Float64Array(ne);for(let e=0;e<ne;e++)harmonic[e]=alpha[e]-exact[e]-coexact[e];
+  const norm=a=>Math.sqrt(dotArr(a,a));
+  const dotArr=(a,b)=>{let s=0;for(let i=0;i<a.length;i++)s+=a[i]*b[i];return s;};
+  const rec=new Float64Array(ne);for(let i=0;i<ne;i++)rec[i]=exact[i]+coexact[i]+harmonic[i];
+  let err=0;for(let i=0;i<ne;i++)err=Math.max(err,Math.abs(alpha[i]-rec[i]));
+  const exE=dotArr(exact,exact),coE=dotArr(coexact,coexact),haE=dotArr(harmonic,harmonic),tot=exE+coE+haE||1;
+  fp3HodgeCache={t,alpha,exact,coexact,harmonic,phi,psi,energy:{exact:exE,coexact:coE,harmonic:haE,total:tot},fractions:{exact:exE/tot,coexact:coE/tot,harmonic:haE/tot},reconstructionError:err,b0:1,b1:1,b2:0,nilpotency:D.maxNilpotency};
+  fp3HodgeLastT=t;return fp3HodgeCache;
+}
+function fp3HodgeAtParticle(p,t){
+  const D=fp3InitDiscreteHodge(),H=fp3HodgeCache||fp3ComputeDiscreteHodge(t), candidates=[];
+  for(let i=0;i<D.E;i++){const e=D.edges[i],dx=e.mx-p.x,dy=e.my-p.y,dz=e.mz-p.z; candidates.push({i,d:dx*dx+dy*dy+dz*dz});}
+  candidates.sort((a,b)=>a.d-b.d);const take=candidates.slice(0,4), out={exact:{x:0,y:0,z:0},coexact:{x:0,y:0,z:0},harmonic:{x:0,y:0,z:0}};let ws=0;
+  for(const c of take){const e=D.edges[c.i],w=1/(c.d+.08),f=w/e.L;ws+=w;for(const k of ['exact','coexact','harmonic']){const a=H[k][c.i]*f;out[k].x+=a*e.tx;out[k].y+=a*e.ty;out[k].z+=a*e.tz;}}
+  if(ws){out.exact.x/=ws;out.exact.y/=ws;out.exact.z/=ws;out.coexact.x/=ws;out.coexact.y/=ws;out.coexact.z/=ws;out.harmonic.x/=ws;out.harmonic.y/=ws;out.harmonic.z/=ws;}
+  return out;
+}
+function fp3HodgeVector(x,y,z,t){return fp3HodgeAtParticle({x,y,z},t);}
+function fp3InitHodgeOverlay(){
+  if(fp3HodgeExactLines) return;
+  const D=fp3InitDiscreteHodge(), count=D.E;
+  const make=(color,opacity)=>{
+    const geo=new THREE.BufferGeometry(); geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(count*6),3));
+    return new THREE.LineSegments(geo,new THREE.LineBasicMaterial({color,transparent:true,opacity,depthWrite:false}));
+  };
+  fp3HodgeExactLines=make(0x38bdf8,.38); fp3HodgeCoexactLines=make(0xa78bfa,.42); fp3HodgeHarmonicLines=make(0xfbbf24,.46);
+  gFieldParticle.add(fp3HodgeExactLines,fp3HodgeCoexactLines,fp3HodgeHarmonicLines);
+  // The actual 16 vertices and 36 edges of the audit complex, shown faintly behind the sectors.
+  const vGeo=new THREE.BufferGeometry();const vp=new Float32Array(D.V*3);D.verts.forEach((v,i)=>{vp[i*3]=v.x;vp[i*3+1]=v.y;vp[i*3+2]=v.z;});vGeo.setAttribute('position',new THREE.BufferAttribute(vp,3));
+  const vm=new THREE.Points(vGeo,new THREE.PointsMaterial({color:0xffffff,size:.055,transparent:true,opacity:.42,depthWrite:false}));vm.userData.weltmetronVertices=true;gFieldParticle.add(vm);
+  fp3HodgeExactArrow=new THREE.ArrowHelper(new THREE.Vector3(0,1,0),new THREE.Vector3(),.4,0x38bdf8,.10,.06);
+  fp3HodgeCoexactArrow=new THREE.ArrowHelper(new THREE.Vector3(0,1,0),new THREE.Vector3(),.4,0xa78bfa,.10,.06);
+  fp3HodgeHarmonicArrow=new THREE.ArrowHelper(new THREE.Vector3(0,1,0),new THREE.Vector3(),.4,0xfbbf24,.10,.06);
+  fp3GradArrow=new THREE.ArrowHelper(new THREE.Vector3(0,1,0),new THREE.Vector3(),.5,0x38bdf8,.10,.06);
+  fp3ForceArrow=new THREE.ArrowHelper(new THREE.Vector3(0,1,0),new THREE.Vector3(),.5,0xf43f5e,.10,.06);
+  fp3VelArrow=new THREE.ArrowHelper(new THREE.Vector3(0,1,0),new THREE.Vector3(),.5,0xfbbf24,.10,.06);
+  fp3MathGroup=new THREE.Group(); gFieldParticle.add(fp3MathGroup); fp3MathGroup.add(fp3HodgeExactArrow,fp3HodgeCoexactArrow,fp3HodgeHarmonicArrow,fp3GradArrow,fp3ForceArrow,fp3VelArrow);
+}
+function fp3UpdateHodgeOverlay(t,p,m){
+  if(!fp3HodgeExactLines) fp3InitHodgeOverlay();
+  const D=fp3InitDiscreteHodge(),H=fp3HodgeCache||fp3ComputeDiscreteHodge(t), arrays=[fp3HodgeExactLines,fp3HodgeCoexactLines,fp3HodgeHarmonicLines],keys=['exact','coexact','harmonic'];
+  arrays.forEach((obj,si)=>{const a=obj.geometry.attributes.position.array;let k=0;D.edges.forEach((e,i)=>{const q=H[keys[si]][i]/(e.L||1),sc=.32*(1+(t<fp3HodgePulseAt?.8:0));a[k++]=e.mx-e.tx*e.L*.5;a[k++]=e.my-e.ty*e.L*.5;a[k++]=e.mz-e.tz*e.L*.5;a[k++]=e.mx+e.tx*e.L*.5+e.tx*q*sc;a[k++]=e.my+e.ty*e.L*.5+e.ty*q*sc;a[k++]=e.mz+e.tz*e.L*.5+e.tz*q*sc;});obj.geometry.attributes.position.needsUpdate=true;obj.visible=fp3HodgeVisible;});
+  const hp=fp3HodgeAtParticle(p,t),setArrow=(a,v)=>{const V=new THREE.Vector3(v.x,v.y,v.z),L=V.length();a.position.set(p.x,p.y,p.z);a.visible=fp3HodgeVisible&&L>1e-6;if(a.visible){a.setDirection(V.normalize());a.setLength(Math.min(.9,Math.max(.08,L*1.4)),.09,.055);}};
+  setArrow(fp3HodgeExactArrow,hp.exact);setArrow(fp3HodgeCoexactArrow,hp.coexact);setArrow(fp3HodgeHarmonicArrow,hp.harmonic);
+}
+function toggleFp3Hodge(){
+  fp3HodgeVisible=!fp3HodgeVisible;
+  [fp3HodgeExactLines,fp3HodgeCoexactLines,fp3HodgeHarmonicLines].forEach(o=>{if(o)o.visible=fp3HodgeVisible;});
+  [fp3HodgeExactArrow,fp3HodgeCoexactArrow,fp3HodgeHarmonicArrow].forEach(o=>{if(o)o.visible=fp3HodgeVisible;});
+  const b=$("btnFp3Hodge"); if(b)b.textContent=fp3HodgeVisible?"Hide Hodge Sectors":"Show Hodge Sectors";
+}
+function fp3HodgePulse(){ fp3HodgePulseAt=(clock3D?.getElapsedTime()||0)+1.8; }
+function fp3UpdateHodgeOverlay(t,p,m){
+  if(!fp3HodgeExactLines) fp3InitHodgeOverlay();
+  const D=fp3InitDiscreteHodge(),H=fp3HodgeCache||fp3ComputeDiscreteHodge(t),arrays=[fp3HodgeExactLines,fp3HodgeCoexactLines,fp3HodgeHarmonicLines],keys=['exact','coexact','harmonic'],n=D.n;
+  arrays.forEach((obj,si)=>{const a=obj.geometry.attributes.position.array;let k=0;D.edges.forEach((e,i)=>{const v=D.verts[e.a],w=D.verts[e.b],px=D.lo+(D.hi-D.lo)*(v.x+w.x)/(2*(n-1)),py=D.lo+(D.hi-D.lo)*(v.y+w.y)/(2*(n-1)),pz=D.lo+(D.hi-D.lo)*(v.z+w.z)/(2*(n-1)),q=e.axis==='x'?{x:H[keys[si]][i],y:0,z:0}:e.axis==='y'?{x:0,y:H[keys[si]][i],z:0}:{x:0,y:0,z:H[keys[si]][i]},L=Math.hypot(q.x,q.y,q.z),sc=.42*(1+(t<fp3HodgePulseAt?.65:0))/(.5+L);a[k++]=px;a[k++]=py;a[k++]=pz;a[k++]=px+q.x*sc;a[k++]=py+q.y*sc;a[k++]=pz+q.z*sc;});obj.geometry.attributes.position.needsUpdate=true;obj.visible=fp3HodgeVisible;});
+  const hp=fp3HodgeAtParticle(p,t),setArrow=(a,v)=>{const V=new THREE.Vector3(v.x,v.y,v.z),L=V.length();a.position.set(p.x,p.y,p.z);a.visible=fp3HodgeVisible&&L>1e-6;if(a.visible){a.setDirection(V.normalize());a.setLength(Math.min(.9,Math.max(.08,L*1.4)),.09,.055);}};
+  setArrow(fp3HodgeExactArrow,hp.exact);setArrow(fp3HodgeCoexactArrow,hp.coexact);setArrow(fp3HodgeHarmonicArrow,hp.harmonic);
+}
+function updateFieldParticle3DMathOverlay(t){
+  if(!fp3MathGroup) fp3InitHodgeOverlay();
+  if(!fp3Particles.length) return;
+  const idx=Math.max(0,Math.min(fp3Particles.length-1,+($("sFp3Track")?.value||0))), p=fp3Particles[idx], m=p.math; if(!m) return;
+  const setArrow=(a,v,maxLen)=>{const V=new THREE.Vector3(v.x,v.y,v.z),L=V.length();a.position.set(p.x,p.y,p.z);if(L<1e-6){a.visible=false;return;}a.visible=true;a.setDirection(V.normalize());a.setLength(Math.min(maxLen,Math.max(.08,L*1.25)),.10,.06);};
+  setArrow(fp3GradArrow,m.grad,1.15); setArrow(fp3ForceArrow,m.fieldAcc,1.35); setArrow(fp3VelArrow,{x:p.vx,y:p.vy,z:p.vz},1.0);
+  fp3UpdateHodgeOverlay(t,p,m);
+  const gm=Math.hypot(m.grad.x,m.grad.y,m.grad.z), fa=Math.hypot(m.fieldAcc.x,m.fieldAcc.y,m.fieldAcc.z), ta=Math.hypot(m.totalAcc.x,m.totalAcc.y,m.totalAcc.z);
+  const hp=fp3HodgeAtParticle(p,t), H=fp3HodgeCache, hf=H?.fractions||{exact:0,coexact:0,harmonic:0};
+  $("vFp3Track").textContent=String(idx+1); $("mFp3State").textContent=`q=${m.charge.toFixed(3)} · m*=${m.massScale.toFixed(3)} · P=${m.P.toFixed(2)} Q=${m.Q.toFixed(2)} k=${m.k.toFixed(2)} κ=${m.kap.toFixed(2)}`;
+  $("mFp3Phi").textContent=`${m.phi.toFixed(3)} / ${gm.toFixed(3)}`;
+  $("mFp3FieldAcc").textContent=`(${m.fieldAcc.x.toFixed(2)}, ${m.fieldAcc.y.toFixed(2)}, ${m.fieldAcc.z.toFixed(2)}) |a|=${fa.toFixed(3)}`;
+  $("mFp3Hodge").textContent=`Weltmetron Hodge: Exact ${(100*hf.exact).toFixed(0)}% · Coexact ${(100*hf.coexact).toFixed(0)}% · Harmonic ${(100*hf.harmonic).toFixed(0)}% · β₁=${H?.b1??1} · ‖B₁B₂‖=${(H?.nilpotency??0).toExponential(1)}`;
+  $("mFp3TotalAcc").textContent=`(${m.totalAcc.x.toFixed(2)}, ${m.totalAcc.y.toFixed(2)}, ${m.totalAcc.z.toFixed(2)}) |a|=${ta.toFixed(3)}`;
 }
 
 function updateKnot3D(){ const P = +$("sKnotP").value, Q = +$("sKnotQ").value; $("vKnotP").textContent = P; $("vKnotQ").textContent = Q; rebuildKnot3D(P, Q); }
@@ -3689,7 +4066,14 @@ function tick3D(now){
     pepsNodes.forEach((n, i) => n.scale.setScalar(1 + 0.15 * boost * Math.sin(elapsed * 3 + i * 1.5)));
     meraRings.forEach((r, i) => { r.rotation.z = elapsed * (i % 2 ? -0.5 : 0.5) * boost; r.rotation.y = Math.sin(elapsed * 0.6 + i) * 0.22; });
   }
-  composer.render();
+  else if(mode3D === "f"){
+    fp3SimAccum += Math.min(dt, .05) * boost;
+    if(fp3SimAccum >= .033){
+      const simDt=Math.min(fp3SimAccum,.066); fp3SimAccum=0; fp3Frame++;
+      stepFieldParticle3D(simDt);
+    }
+  }
+  if(mode3D === "f") renderer.render(scene,camera); else composer.render();
 }
 
 // Dock minimize/expand
@@ -3701,6 +4085,7 @@ $("dock3dHdr").onclick = () => {
 // Top-Bar View Switcher (2D Panels | 3D WebGL | Log)
 function switchTopTab(view){
   activeView = view;
+  if(view === "3d"){ const d=$("dock3dWrap"); d.classList.add("min"); $("dock3dChevron").innerHTML="&#9650;"; }
   const is3D = view === "3d";
   const isGuide = view === "guide";
   const isLabs = view === "labs";
@@ -3746,8 +4131,7 @@ window.addEventListener("resize", resize3D);
 // Keys 1-9 jump directly to the 9 3D WebGL regimes, 0 returns to 2D Panels
 window.addEventListener("keydown", e => {
   if(e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
-  if(e.key === "0") switchTopTab("viz");
-  const km = { "1":"d","2":"c","3":"b","4":"a","5":"s","6":"h","7":"k","8":"m","9":"g" };
+  const km = { "1":"d","2":"c","3":"b","4":"a","5":"s","6":"h","7":"k","8":"m","9":"g","0":"f" };
   if(km[e.key]){ switchTopTab("3d"); set3DMode(km[e.key]); }
 });
 
@@ -5275,14 +5659,15 @@ const LAB_TITLES = {
   qwalk: "Lab 4 · Unitary Simplicial Dirac Quantum Walk & Spectral Harmonic Filter",
   astro: "Lab 5 · Astrophysical GW Echo & Galactic BEC Halo Lab",
   pyrepl:"Lab 6 · Live In-Browser Python + SciPy + Quantum Hodge REPL",
-  chal:  "Lab 7 · Guided Hypothesis & Discovery Challenges"
+  chal:  "Lab 7 · Guided Hypothesis & Discovery Challenges",
+  fieldparticle: "Lab 8 · Field ↔ Particle Interaction Sandbox"
 };
 
 function switchLabTab(name){
   activeLab = name;
   $("labMainTitle").textContent = LAB_TITLES[name] || "Simulation Lab";
   document.querySelectorAll(".lsub-btn").forEach(b => b.classList.toggle("on", b.dataset.lab === name));
-  ["synth","sheaf","qpe","qwalk","astro","pyrepl","chal"].forEach(id => {
+  ["synth","sheaf","qpe","qwalk","astro","pyrepl","fieldparticle","chal"].forEach(id => {
     const el = $("lab_" + id);
     if(el) el.classList.toggle("open", id === name);
   });
@@ -5301,6 +5686,7 @@ function startLabsLoop(){
     else if(activeLab === "qpe") drawQpeLab(t);
     else if(activeLab === "qwalk") drawQWalkLab(t);
     else if(activeLab === "astro") drawAstroLab(t);
+    else if(activeLab === "fieldparticle") drawFieldParticleLab(t);
     labsRafId = requestAnimationFrame(tick);
   }
   labsRafId = requestAnimationFrame(tick);
@@ -5967,6 +6353,68 @@ async function runPythonRepl(){
   }
 }
 
+// --- LAB 8: FIELD ↔ PARTICLE INTERACTION SANDBOX ---
+const FP_NX=48, FP_NY=32;
+let fpField=new Float32Array(FP_NX*FP_NY), fpNextField=new Float32Array(FP_NX*FP_NY), fpParticles=[];
+let fpPreset="waves", fpPaused=false, fpLastT=0;
+function fpIdx(x,y){return y*FP_NX+x;}
+function fpClamp(v,a,b){return Math.max(a,Math.min(b,v));}
+function fpSeed(i){const x=Math.sin((i+1)*12.9898)*43758.5453;return x-Math.floor(x);}
+function fpSetFieldPreset(kind){
+  fpPreset=kind; const strength=Number($("iFpField")?.value||1);
+  for(let y=0;y<FP_NY;y++)for(let x=0;x<FP_NX;x++){
+    const u=x/(FP_NX-1),v=y/(FP_NY-1);let z=0;
+    if(kind==="waves") z=.55*Math.sin(2*Math.PI*(u*1.25-v*.55))+.25*Math.cos(2*Math.PI*(u*2.1+v*.8))+.9*Math.exp(-((u-.23)**2+(v-.55)**2)/.018);
+    else if(kind==="doublewell"){const a=Math.exp(-((u-.31)**2+(v-.5)**2)/.025),b=Math.exp(-((u-.69)**2+(v-.5)**2)/.025);z=-1.25*a-1.25*b+.28*Math.cos(2*Math.PI*v);}
+    else {const dx=u-.5,dy=v-.5,r2=dx*dx+dy*dy+.018;z=1.6*Math.atan2(dy,dx)/Math.PI+.35*Math.exp(-r2/.08);}
+    fpField[fpIdx(x,y)]=z*strength;
+  }
+}
+function fpSpawnParticles(){
+  const n=Number($("iFpCount")?.value||32),mode=$("selFpMode")?.value||"agent";fpParticles=[];
+  for(let i=0;i<n;i++){const a=fpSeed(i*3+1)*Math.PI*2,r=.10+.34*fpSeed(i*3+2);fpParticles.push({x:.5+Math.cos(a)*r,y:.5+Math.sin(a)*r,vx:(fpSeed(i*3+3)-.5)*.05,vy:(fpSeed(i*3+4)-.5)*.05,q:mode==="probe"?.9:(mode==="source"?1:(i%2?1:-1)),mass:.8+.7*fpSeed(i*3+5),trail:[]});}
+}
+function resetFieldParticleLab(){
+  fpPaused=false;const fpPauseBtn=$("btnFpPause");if(fpPauseBtn)fpPauseBtn.textContent="Pause";
+  const mode=$("selFpMode")?.value||"agent";$("oFpMode").textContent=mode==="probe"?"Passive Probe":(mode==="source"?"Active Source":"Agent");$("oFpCount").textContent=$("iFpCount")?.value||"32";
+  fpSetFieldPreset(fpPreset);fpSpawnParticles();fpLastT=0;
+}
+function setFieldParticlePreset(kind){fpPreset=kind;resetFieldParticleLab();}
+function toggleFieldParticlePause(){fpPaused=!fpPaused;$("btnFpPause").textContent=fpPaused?"Resume":"Pause";}
+function fpSample(x,y){
+  const gx=fpClamp(x,0,1)*(FP_NX-1),gy=fpClamp(y,0,1)*(FP_NY-1),x0=Math.floor(gx),y0=Math.floor(gy),x1=Math.min(FP_NX-1,x0+1),y1=Math.min(FP_NY-1,y0+1),tx=gx-x0,ty=gy-y0;
+  const a=fpField[fpIdx(x0,y0)],b=fpField[fpIdx(x1,y0)],c=fpField[fpIdx(x0,y1)],d=fpField[fpIdx(x1,y1)];return(a*(1-tx)+b*tx)*(1-ty)+(c*(1-tx)+d*tx)*ty;
+}
+function fpGradient(x,y){const e=1/(FP_NX-1);return{x:(fpSample(x+e,y)-fpSample(x-e,y))/(2*e),y:(fpSample(x,y+e)-fpSample(x,y-e))/(2*e)};}
+function fpStep(dt){
+  const mode=$("selFpMode")?.value||"agent",coupling=Number($("iFpCouple")?.value||0),interact=Number($("iFpInteract")?.value||0),sourceStrength=Number($("iFpSource")?.value||0),next=fpNextField;
+  const diff=.035,decay=fpPreset==="waves"?.10:.025;
+  for(let y=1;y<FP_NY-1;y++)for(let x=1;x<FP_NX-1;x++){const i=fpIdx(x,y),lap=fpField[fpIdx(x-1,y)]+fpField[fpIdx(x+1,y)]+fpField[fpIdx(x,y-1)]+fpField[fpIdx(x,y+1)]-4*fpField[i];next[i]=fpField[i]+dt*(diff*lap-decay*fpField[i]);}
+  for(let x=0;x<FP_NX;x++){next[fpIdx(x,0)]=next[fpIdx(x,1)];next[fpIdx(x,FP_NY-1)]=next[fpIdx(x,FP_NY-2)];}
+  for(let y=0;y<FP_NY;y++){next[fpIdx(0,y)]=next[fpIdx(1,y)];next[fpIdx(FP_NX-1,y)]=next[fpIdx(FP_NX-2,y)];}
+  if(mode==="source"&&coupling>0&&sourceStrength>0)for(const p of fpParticles){const cx=Math.round(p.x*(FP_NX-1)),cy=Math.round(p.y*(FP_NY-1)),sig=1.8;for(let yy=Math.max(1,cy-4);yy<=Math.min(FP_NY-2,cy+4);yy++)for(let xx=Math.max(1,cx-4);xx<=Math.min(FP_NX-2,cx+4);xx++){const rr=(xx-cx)**2+(yy-cy)**2;next[fpIdx(xx,yy)]+=dt*coupling*sourceStrength*p.q*Math.exp(-rr/(2*sig*sig));}}
+  fpField.set(next);const acc=[];
+  for(let i=0;i<fpParticles.length;i++){const p=fpParticles[i],g=fpGradient(p.x,p.y),ff=coupling*(p.q/p.mass);let ax=-ff*g.x,ay=-ff*g.y;
+    const damp=mode==="agent"?.75:(mode==="probe"?.20:.45);ax+=-damp*p.vx;ay+=-damp*p.vy;
+    for(let j=0;j<fpParticles.length;j++)if(j!==i){const q=fpParticles[j],dx=p.x-q.x,dy=p.y-q.y,r2=dx*dx+dy*dy+1e-4;if(r2<.012){const f=interact*.00055/(r2*r2);ax+=dx*f;ay+=dy*f;}}
+    acc.push([ax,ay]);}
+  for(let i=0;i<fpParticles.length;i++){const p=fpParticles[i],[ax,ay]=acc[i];p.vx=fpClamp(p.vx+ax*dt,-.9,.9);p.vy=fpClamp(p.vy+ay*dt,-.9,.9);p.x+=p.vx*dt;p.y+=p.vy*dt;if(p.x<.02||p.x>.98){p.x=fpClamp(p.x,.02,.98);p.vx*=-.72;}if(p.y<.02||p.y>.98){p.y=fpClamp(p.y,.02,.98);p.vy*=-.72;}p.trail.push([p.x,p.y]);if(p.trail.length>28)p.trail.shift();}
+  if(coupling>.55&&(mode==="agent"||mode==="source"))unlockChallenge("c_fieldparticle");
+}
+function stepFieldParticleLab(){fpStep(.08);drawFieldParticleLab(fpLastT);}
+function drawFieldParticleLab(t){
+  const cv=$("cvLabFieldParticle");if(!cv)return;if(!fpParticles.length)resetFieldParticleLab();if(!fpPaused){const dt=Math.min(.045,Math.max(.008,(t-(fpLastT||t))||.016));fpStep(dt*3.2);}fpLastT=t;
+  const ctx=resizeCanvas(cv),w=cv.width,h=cv.height,d=window.devicePixelRatio||1;clear(ctx,w,h);canvasFrame(ctx,w,h,"LAB 8 · FIELD ↔ PARTICLE","local field gradient + particle feedback");
+  const gx=12*d,gy=38*d,gw=w-24*d,gh=h-54*d,cw=gw/FP_NX,ch=gh/FP_NY;let mn=Infinity,mx=-Infinity;for(const v of fpField){mn=Math.min(mn,v);mx=Math.max(mx,v);}const span=Math.max(1e-6,mx-mn);
+  for(let y=0;y<FP_NY;y++)for(let x=0;x<FP_NX;x++){const q=(fpField[fpIdx(x,y)]-mn)/span,hue=220-190*q;ctx.fillStyle=`hsl(${hue},70%,${28+30*q}%)`;ctx.fillRect(gx+x*cw,gy+y*ch,cw+1,ch+1);}
+  ctx.globalAlpha=.22;ctx.strokeStyle="#ffffff";ctx.lineWidth=1*d;for(let y=3;y<FP_NY;y+=4)for(let x=3;x<FP_NX;x+=4){const g=fpGradient(x/(FP_NX-1),y/(FP_NY-1)),L=7*d,z=Math.hypot(g.x,g.y)||1,px=gx+x*cw,py=gy+y*ch;ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(px+g.x/z*L,py+g.y/z*L);ctx.stroke();}
+  ctx.globalAlpha=.5;for(const p of fpParticles)if(p.trail.length>1){ctx.beginPath();p.trail.forEach((q,i)=>{const x=gx+q[0]*gw,y=gy+q[1]*gh;i?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.strokeStyle="#e2e8f0";ctx.stroke();}
+  const mode=$("selFpMode")?.value||"agent",pc=mode==="probe"?"#38bdf8":(mode==="source"?"#fbbf24":"#a78bfa");ctx.globalAlpha=1;for(const p of fpParticles){const x=gx+p.x*gw,y=gy+p.y*gh,r=(2.8+Math.min(4,Math.hypot(p.vx,p.vy)*8))*d;ctx.fillStyle=pc;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();}
+  ctx.fillStyle="rgba(0,0,0,.58)";ctx.fillRect(gx+6*d,gy+6*d,260*d,27*d);ctx.fillStyle="#e2e8f0";ctx.font=`600 ${8*d}px 'JetBrains Mono',monospace`;ctx.fillText(`FIELD ${fpPreset.toUpperCase()} · ${mode.toUpperCase()} · ${fpPaused?"PAUSED":"RUNNING"}`,gx+12*d,gy+23*d);
+  const energy=Array.from(fpField).reduce((a,v)=>a+v*v,0)/fpField.length,av=fpParticles.reduce((a,q)=>a+Math.hypot(q.vx,q.vy),0)/Math.max(1,fpParticles.length);$("statsLabFieldParticle").innerHTML=`<div class="stat"><div class="k">Particles</div><div class="v">${fpParticles.length}</div></div><div class="stat"><div class="k">Field RMS</div><div class="v">${Math.sqrt(energy).toFixed(3)}</div></div><div class="stat"><div class="k">Mean Speed</div><div class="v">${av.toFixed(3)}</div></div><div class="stat"><div class="k">Coupling</div><div class="v">${couplingSafeFp().toFixed(2)}</div></div>`;
+}
+function couplingSafeFp(){return Number($("iFpCouple")?.value||0);}
+
 // --- LAB 7: GUIDED HYPOTHESIS CHALLENGES ---
 const LAB_CHALLENGES = [
   { id: "c_delta", title: "1 · Synthesize the Doubly-Charged Δ⁺⁺ Baryon", lab: "synth",
@@ -5982,7 +6430,9 @@ const LAB_CHALLENGES = [
   { id: "c_echo", title: "6 · Tune GW150914 Post-Merger Echoes", lab: "astro",
     desc: "In Lab 5 (GW Echo & Halo), set remnant mass M₀ ≈ 62.0 M☉ and Core Reflectivity ≥ 0.60 to resolve the 20.96 ms echo comb." },
   { id: "c_pyrepl", title: "7 · Execute Live Quantum Hodge Python Code", lab: "pyrepl",
-    desc: "Boot the Pyodide Web Worker and execute a Dirac/Sheaf/KKT experiment in Lab 6 (Python REPL)." }
+    desc: "Boot the Pyodide Web Worker and execute a Dirac/Sheaf/KKT experiment in Lab 6 (Python REPL)." },
+  { id: "c_fieldparticle", title: "8 · Couple Discrete Particles to a Continuous Field", lab: "fieldparticle",
+    desc: "In Lab 8 (Field ↔ Particle), run the Responsive Agent with non-zero coupling, then switch to Active Source to observe particles feeding a source term back into the field." }
 ];
 
 function unlockChallenge(id){
@@ -6022,6 +6472,8 @@ window.addEventListener("resize", () => { if(activeView === "labs") startLabsLoo
 updateSynthLab();
 updateQpeLab();
 renderChallenges();
+// Default landing view: the 3D field ↔ particle simulation is the main visual.
+requestAnimationFrame(() => { switchTopTab("3d"); set3DMode("f"); });
 
 </script>
 </body>

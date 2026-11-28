@@ -392,6 +392,25 @@ table.p21 tr.p-row:hover{background:rgba(56,189,248,.16)}
   #dock3dWrap.min{width:auto;min-width:170px}
   body.hud-open{overflow:hidden}
 }
+
+/* v3 Upgrades: 3D Raycast Selection Badge, Clipping Slice, Baseline Pin & Audit Filters */
+#sel3dBanner{
+  position:fixed;top:46px;left:12px;z-index:21;padding:4px 10px;
+  border:1px solid rgba(56,189,248,.45);border-radius:999px;background:rgba(6,14,28,.92);
+  color:var(--cyan);font-size:8px;letter-spacing:.08em;display:none;align-items:center;gap:6px;
+  box-shadow:0 8px 24px rgba(0,0,0,.6);
+}
+#sel3dBanner.show{display:flex}
+#sel3dBanner button{padding:1px 5px;font-size:8px;border-color:rgba(244,63,94,.5);color:var(--crimson)}
+#ctxLostBanner{
+  position:absolute;inset:0;z-index:18;display:none;align-items:center;justify-content:center;
+  background:rgba(4,6,11,.88);color:var(--amber);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+}
+#ctxLostBanner.show{display:flex}
+button.pin-btn.on{border-color:var(--amber);color:var(--amber);background:rgba(251,191,36,.16);font-weight:700}
+.audit-filter-bar{display:flex;gap:5px;align-items:center;padding:6px 14px;border-bottom:1px solid var(--line);background:rgba(0,0,0,.22);flex-wrap:wrap}
+.af-btn{padding:3px 8px;font-size:8px;border-radius:999px;border:1px solid var(--line);color:var(--mut);background:#090e1a}
+.af-btn.on{border-color:var(--cyan);color:#fff;background:rgba(56,189,248,.18);font-weight:700}
 </style>
 </head>
 <body>
@@ -425,7 +444,11 @@ table.p21 tr.p-row:hover{background:rgba(56,189,248,.16)}
   <div class="glass-pill" id="toast"></div>
 </div>
 <div id="mobileBackdrop" onclick="toggleMobileHud(false)"></div>
-<div id="stage3dWrap"><div id="stage3d"></div></div>
+<div id="stage3dWrap">
+  <div id="stage3d"></div>
+  <div id="ctxLostBanner">WebGL Context Lost — Restoring GPU Surface...</div>
+</div>
+<div id="sel3dBanner"><span id="sel3dText">Selected: —</span><button type="button" onclick="clearSelectionSync()">&#10005;</button></div>
 <div id="dock3dWrap">
   <div class="dhdr" id="dock3dHdr" title="Tap to Minimize / Expand">
     <span id="dock3dTitle">3D Analytics · Cat C · Charged Soliton</span>
@@ -536,6 +559,10 @@ table.p21 tr.p-row:hover{background:rgba(56,189,248,.16)}
         <button type="button" class="tool on" data-l3="quarks" onclick="toggleLayer3D('quarks',this)">K&#8323;</button>
         <button type="button" class="tool on" data-l3="shells" onclick="toggleLayer3D('shells',this)">Shells</button>
       </div>
+      <div class="ctl" style="margin-top:2px">
+        <label><span>Cross-Section Slice Y</span><output id="vSliceY">Off</output></label>
+        <input type="range" id="sSliceY" min="-35" max="35" step="1" value="35" oninput="updateSlice3D(this.value)"/>
+      </div>
       <div class="metric"><span id="hudZones3d">Zones (24,31,34,15)</span><b style="color:var(--teal)" id="hudZonePct3d">88.8%|10.6%|0.6%</b></div>
       <div class="zbar-wrap">
         <div id="zb1" style="width:88.8%;background:#f43f5e"></div>
@@ -628,11 +655,15 @@ table.p21 tr.p-row:hover{background:rgba(56,189,248,.16)}
     </div>
   </div>
 
-  <h2>Export &amp; Provenance</h2>
+  <h2>Export, Baseline &amp; Share</h2>
   <div class="grid3">
     <button type="button" id="btnExportJson">JSON</button>
     <button type="button" id="btnExportJsonl">Ledger</button>
     <button type="button" id="btnExportPng">PNG</button>
+  </div>
+  <div class="grid2">
+    <button type="button" class="pin-btn" id="btnPinBaseline" onclick="togglePinBaseline()">Pin Baseline</button>
+    <button type="button" id="btnCopyShareUrl" onclick="copyShareUrl()">Copy Link</button>
   </div>
 
   <h2>Live metrics</h2>
@@ -662,9 +693,16 @@ table.p21 tr.p-row:hover{background:rgba(56,189,248,.16)}
     <div class="row">
       <button type="button" class="audit-btn" id="btnTabAuditJs">&#9889; Instant JS</button>
       <button type="button" class="py-btn" id="btnTabAuditPy">&#9654; Python Worker</button>
+      <button type="button" id="btnCopyAuditMd" onclick="copyAuditMarkdown()">Copy .md</button>
       <button type="button" id="btnDownloadAudit">Download .log</button>
       <button type="button" id="btnCloseAudit">Close</button>
     </div>
+  </div>
+  <div class="audit-filter-bar" id="auditFilterBar">
+    <span style="font-size:8px;color:var(--mut);text-transform:uppercase;letter-spacing:.08em">Filter Claims:</span>
+    <button type="button" class="af-btn on" data-af="all" onclick="setAuditClaimFilter('all',this)">All</button>
+    <button type="button" class="af-btn" data-af="attention" onclick="setAuditClaimFilter('attention',this)">Failed / Out-of-Tol / Check</button>
+    <button type="button" class="af-btn" data-af="passed" onclick="setAuditClaimFilter('passed',this)">Passed / Proved</button>
   </div>
   <div id="auditJsBody"></div>
   <div id="auditModalBody">Run “Full audit” or “Visualize” to populate the Python Worker stream.</div>
@@ -811,16 +849,16 @@ self.onmessage = async (ev) => {
   const msg = ev.data || {};
   if(msg.type === "boot"){
     try{
-      self.postMessage({type:"progress", status:"loading Pyodide…", log:"Loading Pyodide runtime in Web Worker (Cache API enabled)…", cls:"info"});
+      self.postMessage({type:"progress", status:"loading Pyodide...", log:"Loading Pyodide runtime in Web Worker (Cache API enabled)...", cls:"info"});
       pyodide = await loadPyodide({
         stdout: s => self.postMessage({type:"stdout", text: s + "\n"}),
         stderr: s => self.postMessage({type:"stderr", text: s + "\n"}),
       });
-      self.postMessage({type:"progress", status:"loading numpy+scipy…", log:"Loading numpy + scipy in Worker…", cls:"info"});
+      self.postMessage({type:"progress", status:"loading numpy+scipy...", log:"Loading numpy + scipy in Worker...", cls:"info"});
       await pyodide.loadPackage(["numpy", "scipy"]);
       const src = b64ToUtf8(msg.srcB64);
       pyodide.FS.writeFile("emg_audit.py", src);
-      self.postMessage({type:"progress", status:"importing module…", log:"Harness written (" + (src.length/1024).toFixed(0) + " KB)", cls:"ok"});
+      self.postMessage({type:"progress", status:"importing module...", log:"Harness written (" + (src.length/1024).toFixed(0) + " KB)", cls:"ok"});
       await pyodide.runPythonAsync(\`
 import types, json, sys, importlib.util
 emg = types.ModuleType("emg_audit")
@@ -859,7 +897,7 @@ function createWorker(){
     worker = null;
   }
   workerReady = false;
-  const blob = new Blob([WORKER_CODE], {type: "application/javascript"});
+  const blob = new Blob([WORKER_CODE], {type: "application/javascript;charset=utf-8"});
   const url = URL.createObjectURL(blob);
   worker = new Worker(url);
   URL.revokeObjectURL(url);
@@ -901,7 +939,7 @@ function createWorker(){
   };
 
   worker.onerror = (err) => {
-    const message = err?.message || "Web Worker fatal error";
+    const message = (err?.message || "Web Worker fatal error") + (err?.lineno ? ` [line ${err.lineno}:${err.colno||0}]` : "");
     logEvent(message, "err");
     setStatus("error", "err");
     for(const [id, p] of pendingRequests.entries()){
@@ -1297,8 +1335,10 @@ function drawPanelA(){
   for(const [u,v] of A.edges||[]){if(!pos[u]||!pos[v])continue;ctx.beginPath();ctx.moveTo(...pos[u]);ctx.lineTo(...pos[v]);ctx.stroke();}
   perm.forEach((node,rank)=>{
     const [x,y]=pos[node],t=rank/Math.max(1,n-1);
-    ctx.fillStyle=`rgba(${56+170*t},${189-55*t},248,.95)`;
-    ctx.beginPath();ctx.arc(x,y,(5.5+2*(1-Math.abs(t-.5)*2))*d,0,Math.PI*2);ctx.fill();
+    const isSel = selectedHodgeVertex === node;
+    ctx.fillStyle= isSel ? "#fbbf24" : `rgba(${56+170*t},${189-55*t},248,.95)`;
+    ctx.beginPath();ctx.arc(x,y,(isSel ? 9 : 5.5+2*(1-Math.abs(t-.5)*2))*d,0,Math.PI*2);ctx.fill();
+    if(isSel){ ctx.strokeStyle="#fff"; ctx.lineWidth=1.8*d; ctx.stroke(); }
     ctx.fillStyle="rgba(220,226,238,.75)";ctx.font=`${7*d}px ui-monospace,monospace`;ctx.fillText(String(node),x+6*d,y-5*d);
   });
   ctx.strokeStyle="rgba(56,189,248,.55)";ctx.beginPath();ctx.moveTo(p,h-p);ctx.lineTo(w-p,h-p);ctx.stroke();
@@ -1325,6 +1365,14 @@ function drawPanelB(){
     (f.phi||[]).forEach((v,i)=>{const x=p+ph*i/Math.max(1,f.phi.length-1),y=p+pv*(1-(v-lo)/range);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});
     ctx.stroke();
   }
+  if(baselineData?.panel_b?.frames?.length){
+    const bFr = baselineData.panel_b.frames[Math.min(pbState.frame, baselineData.panel_b.frames.length - 1)];
+    if(bFr?.phi?.length){
+      ctx.save(); ctx.setLineDash([4*d, 4*d]); ctx.strokeStyle="rgba(244,63,94,0.75)"; ctx.lineWidth=1.6*d; ctx.beginPath();
+      bFr.phi.forEach((v,i)=>{const x=p+ph*i/Math.max(1,bFr.phi.length-1),y=p+pv*(1-(v-lo)/range);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});
+      ctx.stroke(); ctx.restore();
+    }
+  }
   ctx.strokeStyle="#67e8f9";ctx.lineWidth=2.2*d;ctx.beginPath();
   phi.forEach((v,i)=>{const x=p+ph*i/Math.max(1,phi.length-1),y=p+pv*(1-(v-lo)/range);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});
   ctx.stroke();
@@ -1336,7 +1384,9 @@ function drawPanelB(){
   }
   ctx.fillStyle="#67e8f9";ctx.font=`${7*d}px ui-monospace,monospace`;ctx.fillText(`N=${fr.N} (frame ${idx+1}/${frames.length})`,p,h-5*d);ctx.fillText(`r₊=${(fr.r_plus||0).toFixed(3)}`,w-p-75*d,h-5*d);
   $("subB").textContent = `N=${fr.N} (${idx+1}/${frames.length})`;
-  $("statsB").innerHTML=`<div class="stat"><div class="k">N / iters</div><div class="v">${fr.N} / ${fr.iters}</div></div><div class="stat"><div class="k">‖R‖∞</div><div class="v">${fr.res_EL_inf.toExponential(1)}</div></div>`;
+  const tl = (DATA.panel_b.transfer_losses || []).find(t => t.source === `N_${fr.N}`);
+  const tlStr = tl ? ` · Δ_tr=${tl.relative_loss.toExponential(1)}` : "";
+  $("statsB").innerHTML=`<div class="stat"><div class="k">N / iters${tl?" / loss":""}</div><div class="v">${fr.N} / ${fr.iters}${tlStr}</div></div><div class="stat"><div class="k">‖R‖∞</div><div class="v">${fr.res_EL_inf.toExponential(1)}</div></div>`;
 }
 
 function drawPanelC(){
@@ -1355,6 +1405,14 @@ function drawPanelC(){
     hitState.panelC.push({ bond: i, entropy: v, x0: bx/d, x1: (bx+bwidth)/d });
   });
   ctx.strokeStyle="rgba(167,139,250,.85)";ctx.lineWidth=1.4*d;ctx.beginPath();S.forEach((v,i)=>{const x=p+i*bw+bw*.5,y=h-p-(v/maxS)*(h-2*p)*.72;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke();
+  if(baselineData?.panel_c?.bond_entropies?.length){
+    const bS = baselineData.panel_c.bond_entropies.map(v=>Math.max(0,v));
+    const bMax = Math.max(maxS, ...bS);
+    const bBw = (w-2*p)/Math.max(1,bS.length);
+    ctx.save(); ctx.setLineDash([4*d, 4*d]); ctx.strokeStyle="rgba(251,191,36,0.88)"; ctx.lineWidth=1.6*d; ctx.beginPath();
+    bS.forEach((v,i)=>{const x=p+i*bBw+bBw*.5,y=h-p-(v/bMax)*(h-2*p)*.72;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});
+    ctx.stroke(); ctx.restore();
+  }
   ctx.fillStyle="rgba(123,132,152,.85)";ctx.font=`${7*d}px ui-monospace,monospace`;ctx.fillText(`χ=${C.chi} · K=${C.K} · d=${C.d}`,p,h-5*d);ctx.fillText(isKin ? "ENTANGLED · KINETIC ON" : "CLASSICAL · PRODUCT STATE",w-p-135*d,h-5*d);
   $("subC").textContent = isKin ? "Panel C · kinetic ON" : "Panel C · classical";
   const maxBondS = S.length ? Math.max(...S) : 0;
@@ -1380,7 +1438,8 @@ function drawPanelD(){
         const bx=p+ei*colW+j*(colW/spec.length);
         const by=h-p-bh;
         const bwBar=Math.max(1,(colW/spec.length)-1);
-        ctx.fillStyle=`rgba(74,222,128,${alpha*(.55+.45*v/maxL)})`;
+        const isEdgeSel = (fi===idx && selectedPepsEdge === ei);
+        ctx.fillStyle = isEdgeSel ? `rgba(251,191,36,${0.65+.35*v/maxL})` : `rgba(74,222,128,${alpha*(.55+.45*v/maxL)})`;
         ctx.fillRect(bx,by,bwBar,bh);
         if(fi===idx){
           hitState.panelD.push({ edge: ei, schmidtIdx: j, val: v, x0: bx/d, x1: (bx+bwBar)/d });
@@ -1452,6 +1511,34 @@ $("cvD").addEventListener("pointermove", ev => {
 });
 $("cvD").addEventListener("pointerleave", hideTip);
 
+$("cvA").addEventListener("click", ev => {
+  const rect = ev.target.getBoundingClientRect();
+  const mx = ev.clientX - rect.left, my = ev.clientY - rect.top;
+  let best = null, bestDist = 18;
+  for(const item of hitState.panelA){
+    const dist = Math.hypot(mx - item.x, my - item.y);
+    if(dist < bestDist){ bestDist = dist; best = item; }
+  }
+  if(best){
+    selectedHodgeVertex = (selectedHodgeVertex === best.node) ? null : best.node;
+    updateSel3DBanner();
+    renderAll();
+    if(selectedHodgeVertex !== null) toast(`Selected Vertex #${best.node} (Synced to 3D Hodge)`);
+  }
+});
+$("cvD").addEventListener("click", ev => {
+  const rect = ev.target.getBoundingClientRect();
+  const mx = ev.clientX - rect.left;
+  const hit = hitState.panelD.find(b => mx >= b.x0 - 1 && mx <= b.x1 + 1);
+  if(hit){
+    selectedPepsEdge = (selectedPepsEdge === hit.edge) ? null : hit.edge;
+    updateSel3DBanner();
+    renderAll();
+    if(selectedPepsEdge !== null) toast(`Selected Simplex Cut #${hit.edge} (Synced to 3D PEPS)`);
+  }
+});
+
+
 function markRuntimeLoaded(panelsUpdated=true){
   runtimeLive = true;
   const banner = $("cachedBanner");
@@ -1465,7 +1552,10 @@ function markRuntimeLoaded(panelsUpdated=true){
 
 function renderClaimSummary(claims){
   const box=$("claimSummary"); if(!box) return;
-  const list = Array.isArray(claims) ? claims : (Array.isArray(DATA?.claims) ? DATA.claims : []);
+  const rawList = Array.isArray(claims) ? claims : (Array.isArray(DATA?.claims) ? DATA.claims : []);
+  const list = auditClaimFilter === "all" ? rawList : (auditClaimFilter === "passed"
+    ? rawList.filter(c => c.status === "PASSED" || c.status === "PROVED")
+    : rawList.filter(c => c.status !== "PASSED" && c.status !== "PROVED"));
   if(!list.length){ box.innerHTML='<div class="claim-total">No runtime claims loaded</div>'; return; }
   const counts={}; list.forEach(c=>counts[c.status]=(counts[c.status]||0)+1);
   const order=["FAILED","OUT_OF_TOLERANCE","INCONCLUSIVE","UNTESTED","PASSED","PROVED"];
@@ -1696,6 +1786,132 @@ $("metroMode").onchange = () => {
   if(inited3D && (mode3D === "d" || mode3D === "c")) select3DParticle(sym3D);
 };
 
+
+// 4. v3 Upgrades: Raycasting, Cross-Section Slice, URL Hash Sync, Baseline Pin, Audit Filters & Context Recovery
+let baselineData = null;
+let selectedHodgeVertex = null, selectedPepsEdge = null, selectedPepsNode = null;
+let auditClaimFilter = "all";
+let clipPlane3D = null, raycaster3D = null, mouse3D = null, pickables3D = [];
+
+function togglePinBaseline(){
+  const btn = $("btnPinBaseline");
+  if(baselineData){
+    baselineData = null;
+    btn.classList.remove("on");
+    btn.textContent = "Pin Baseline";
+    toast("Cleared pinned baseline overlay");
+  } else {
+    baselineData = JSON.parse(JSON.stringify(DATA));
+    btn.classList.add("on");
+    btn.textContent = "Unpin Baseline";
+    toast("Pinned current trajectories as dashed baseline");
+  }
+  renderAll();
+}
+
+function syncUrlHash(){
+  try{
+    const p = new URLSearchParams();
+    p.set("view", activeView);
+    p.set("mode", mode3D);
+    p.set("state", sym3D);
+    p.set("metro", $("metroMode")?.value || "MODERN_CODATA_BENCHMARK");
+    history.replaceState(null, "", "#" + p.toString());
+  }catch(_){}
+}
+
+function applyUrlHash(){
+  try{
+    const raw = (location.hash || "").replace(/^#/, "");
+    if(!raw) return;
+    const p = new URLSearchParams(raw);
+    if(p.get("metro") && $("metroMode")) $("metroMode").value = p.get("metro");
+    if(p.get("state")) sym3D = p.get("state");
+    if(p.get("mode")) mode3D = p.get("mode");
+    if(p.get("view") === "3d"){
+      switchTopTab("3d");
+    } else if(p.get("view") === "log"){
+      switchTopTab("log");
+    }
+  }catch(_){}
+}
+
+function copyShareUrl(){
+  syncUrlHash();
+  const url = location.href;
+  if(navigator.clipboard?.writeText){
+    navigator.clipboard.writeText(url).then(() => toast("Copied deep link to clipboard")).catch(() => toast(url));
+  } else {
+    toast(url);
+  }
+}
+
+function updateSel3DBanner(){
+  const b = $("sel3dBanner"), t = $("sel3dText");
+  if(!b || !t) return;
+  const parts = [];
+  if(selectedHodgeVertex !== null) parts.push(`Hodge V#${selectedHodgeVertex}`);
+  if(selectedPepsNode !== null) parts.push(`PEPS Node #${selectedPepsNode}`);
+  if(selectedPepsEdge !== null) parts.push(`Simplex Cut #${selectedPepsEdge}`);
+  if(parts.length){
+    t.textContent = "Pinned Selection: " + parts.join(" · ");
+    b.classList.add("show");
+  } else {
+    b.classList.remove("show");
+  }
+}
+
+function clearSelectionSync(){
+  selectedHodgeVertex = null;
+  selectedPepsEdge = null;
+  selectedPepsNode = null;
+  updateSel3DBanner();
+  if(inited3D) sync3DFromData();
+  renderAll();
+}
+
+function setAuditClaimFilter(filter, btn){
+  auditClaimFilter = filter;
+  document.querySelectorAll("#auditFilterBar .af-btn").forEach(b => b.classList.toggle("on", b === btn));
+  renderClaimSummary(DATA?.claims);
+  renderInstantJsAudit();
+  if(lastAuditText){
+    const lines = lastAuditText.split("\n");
+    if(filter === "all") $("auditModalBody").textContent = lastAuditText;
+    else if(filter === "attention") $("auditModalBody").textContent = lines.filter(l => /\[(FAIL|CHECK|OUT_OF_TOLERANCE|INCONCLUSIVE|UNTESTED)\]/.test(l) || l.startsWith("---") || l.startsWith("===")).join("\n");
+    else $("auditModalBody").textContent = lines.filter(l => /\[(PASS|PASSED|PROVED)\]/.test(l) || l.startsWith("---") || l.startsWith("===")).join("\n");
+  }
+}
+
+function copyAuditMarkdown(){
+  const { mode } = getMetroConstants();
+  const rows = CANONICAL_21.map(st => ({ ...st, ...calcCanonicalStateJS(st) }));
+  let md = `# EMG Metronic Lab — 7-Tier Verification Summary (${mode})\n\n`;
+  md += `- **Secular α⁻¹:** ${rows[0].aInv.toFixed(8)} (CODATA 137.035999177)\n`;
+  if(DATA?.panel_a) md += `- **Panel A Fiedler λ₂:** ${DATA.panel_a.lambda_2_fiedler.toFixed(6)} | Cutwidth: ${DATA.panel_a.cutwidth_fiedler}\n`;
+  if(DATA?.panel_c) md += `- **Panel C DMRG Energy:** ${DATA.panel_c.energy.toFixed(8)} (${DATA.panel_c.sweeps} sweeps)\n`;
+  md += `\n| State | q | DESY Ref [MeV] | Calc [MeV] | Δ [MeV] | Winding n |\n|---|---:|---:|---:|---:|---|\n`;
+  for(const r of rows){
+    md += `| ${r.sym} | ${r.qx} | ${r.ref.toFixed(4)} | ${r.mev.toFixed(4)} | ${(r.mev - r.ref).toFixed(4)} | (${r.n.join(",")}) |\n`;
+  }
+  if(navigator.clipboard?.writeText){
+    navigator.clipboard.writeText(md).then(() => toast("Copied Markdown audit report")).catch(() => toast("Clipboard blocked"));
+  }
+}
+
+function updateSlice3D(val){
+  const v = +val;
+  if(!inited3D || !renderer || !clipPlane3D) return;
+  if(v >= 35){
+    renderer.localClippingEnabled = false;
+    $("vSliceY").textContent = "Off";
+  } else {
+    renderer.localClippingEnabled = true;
+    clipPlane3D.constant = v / 10;
+    $("vSliceY").textContent = `y ≤ ${(v/10).toFixed(1)}`;
+  }
+}
+
 // 3. Full 3D WebGL Laboratory Engine (All 9 Regimes + UnrealBloomPass + Chart.js)
 let scene, camera, renderer, composer, orbit;
 let gCorpuscle, gPhoton, gBH, gKKT, gHodge, gKontra, gHalo, gPEPS;
@@ -1749,6 +1965,22 @@ function init3D(){
   composer = new THREE.EffectComposer(renderer);
   composer.addPass(new THREE.RenderPass(scene, camera));
   composer.addPass(new THREE.UnrealBloomPass(new THREE.Vector2(800, 600), 0.50, 0.35, 0.24));
+
+  clipPlane3D = new THREE.Plane(new THREE.Vector3(0, -1, 0), 3.5);
+  renderer.clippingPlanes = [clipPlane3D];
+  raycaster3D = new THREE.Raycaster();
+  mouse3D = new THREE.Vector2();
+
+  renderer.domElement.addEventListener("webglcontextlost", e => {
+    e.preventDefault();
+    $("ctxLostBanner")?.classList.add("show");
+    logEvent("WebGL context lost — awaiting GPU restore...", "err");
+  });
+  renderer.domElement.addEventListener("webglcontextrestored", () => {
+    $("ctxLostBanner")?.classList.remove("show");
+    logEvent("WebGL context restored.", "ok");
+    resize3D();
+  });
 
   orbit = new THREE.OrbitControls(camera, renderer.domElement);
   orbit.enableDamping = true; orbit.dampingFactor = 0.05; orbit.minDistance = 2.0; orbit.maxDistance = 28.0;
@@ -1844,6 +2076,73 @@ function init3D(){
   });
   meraRings = [1.95, 2.75, 3.45].map((r, i) => { const m = new THREE.Mesh(new THREE.TorusGeometry(r, 0.025, 10, 64), new THREE.MeshBasicMaterial({ color: i === 1 ? 0xf43f5e : 0x38bdf8, transparent: true, opacity: 0.45 })); m.rotation.x = Math.PI / 2; gPEPS.add(m); return m; });
 
+  // Tag Soliton Shells & Quark Triad for 3D Raycast Inspection
+  zoneSpheres.forEach((m, i) => {
+    m.userData = { kind: "shell", zoneIdx: i + 1, ds: 4 - i, label: `Simplicial Zone ${i+1} (d_s=${4-i})` };
+  });
+  fluxCyls.forEach(({ qM }, q) => {
+    qM.userData = { kind: "quark", color: ["Red (u/d)", "Green (u/d)", "Blue (s/c)"][q], label: `K₃ Color Node #${q+1}` };
+  });
+  pepsNodes.forEach((m, i) => {
+    m.userData = { kind: "pepsNode", nodeIdx: i, label: `Sheaf-PEPS Vertex #${i}` };
+  });
+  pepsEdges.forEach((c, i) => {
+    c.userData = { kind: "pepsEdge", edgeIdx: i, label: `Simplex Cut #${i} (${i<3?"Boundary Cut":"Interior"})` };
+  });
+
+  function raycast3DAt(ev){
+    if(activeView !== "3d" || !inited3D) return null;
+    const rect = renderer.domElement.getBoundingClientRect();
+    mouse3D.x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse3D.y = -((ev.clientY - rect.top) / rect.height) * 2 + 1;
+    raycaster3D.setFromCamera(mouse3D, camera);
+    const targets = [];
+    if(gHodge.visible) targets.push(...gHodge.children.filter(o => o.isMesh));
+    if(gPEPS.visible) targets.push(...pepsNodes, ...pepsEdges);
+    if(gCorpuscle.visible){
+      if(quarkGrp.visible) targets.push(...fluxCyls.map(f => f.qM));
+      if(vis3D.shells) targets.push(...zoneSpheres);
+    }
+    const hits = raycaster3D.intersectObjects(targets, false);
+    return hits.length ? hits[0].object : null;
+  }
+
+  stage3dEl.addEventListener("pointermove", ev => {
+    const obj = raycast3DAt(ev);
+    if(!obj || !obj.userData?.kind){ hideTip(); return; }
+    const u = obj.userData;
+    if(u.kind === "hodgeVertex"){
+      showTip(ev, `<div class="tt-hdr">3D Hodge Vertex #${u.vertex}</div>Fiedler Rank: <span class="tt-val">${u.rank}</span><br/>Partition: <span class="tt-val">${u.side}</span><br/><i>Click to pin across 2D/3D</i>`);
+    } else if(u.kind === "pepsEdge"){
+      const frD = DATA?.panel_d?.frames?.[Math.min(pbState.frame, (DATA?.panel_d?.frames?.length||1)-1)];
+      const spec = frD?.lambda_spectra?.[u.edge] || [];
+      showTip(ev, `<div class="tt-hdr">${u.label}</div>λ_i: <span class="tt-val">${spec.map(x=>x.toFixed(3)).join(", ")}</span><br/><i>Click to highlight in Panel D</i>`);
+    } else if(u.kind === "pepsNode"){
+      showTip(ev, `<div class="tt-hdr">${u.label}</div>Tetrahedral Complex K₄<br/><i>Click to pin vertex</i>`);
+    } else if(u.kind === "quark"){
+      showTip(ev, `<div class="tt-hdr">${u.label}</div>Color Charge: <span class="tt-val">${u.color}</span><br/>SU(3)_c Triad Core`);
+    } else if(u.kind === "shell"){
+      const st = CANONICAL_21.find(s => s.sym === sym3D) || CANONICAL_21[0];
+      showTip(ev, `<div class="tt-hdr">${u.label}</div>Occupation Z_${u.zoneIdx}: <span class="tt-val">${st.zones[u.zoneIdx-1]}</span>`);
+    }
+  });
+  stage3dEl.addEventListener("pointerleave", hideTip);
+  stage3dEl.addEventListener("click", ev => {
+    const obj = raycast3DAt(ev);
+    if(!obj || !obj.userData?.kind) return;
+    const u = obj.userData;
+    if(u.kind === "hodgeVertex"){
+      selectedHodgeVertex = (selectedHodgeVertex === u.vertex) ? null : u.vertex;
+      updateSel3DBanner(); sync3DFromData(); renderAll();
+    } else if(u.kind === "pepsEdge"){
+      selectedPepsEdge = (selectedPepsEdge === u.edgeIdx) ? null : u.edgeIdx;
+      updateSel3DBanner(); sync3DFromData(); renderAll();
+    } else if(u.kind === "pepsNode"){
+      selectedPepsNode = (selectedPepsNode === u.nodeIdx) ? null : u.nodeIdx;
+      updateSel3DBanner(); sync3DFromData();
+    }
+  });
+
   // Double-click / Double-tap Excitation Pulse on 3D Canvas
   let last3DTap = 0;
   stage3dEl.addEventListener("dblclick", () => trigger3DPulse());
@@ -1871,29 +2170,43 @@ function rebuildKnot3D(P = 1, Q = 3){
 
 function sync3DFromData(){
   if(!inited3D) return;
-  // Sync Panel A -> 16V Hodge Complex
+  // Sync Panel A + Frame Scrubber -> 16V Hodge Complex & Fiedler Sweep
   while(gHodge.children.length) gHodge.remove(gHodge.children[0]);
   const A = DATA?.panel_a;
   if(A){
     const nodes = [], perm = A.fiedler_permutation || [];
     const rankOf = {}; perm.forEach((v, r) => rankOf[v] = r);
+    const activeCutoff = Math.floor(((pbState.frame + 1) / Math.max(1, pbState.maxFrame + 1)) * A.n_vertices);
     for(let i = 0; i < A.n_vertices; i++){
-      const a = (TWO_PI_JS * i) / A.n_vertices, t = (rankOf[i] ?? i) / Math.max(1, A.n_vertices - 1);
-      const isLeft = t < 0.5;
-      const m = new THREE.Mesh(new THREE.SphereGeometry(0.13, 14, 14), new THREE.MeshStandardMaterial({ color: isLeft ? 0x2dd4bf : 0xf43f5e, emissive: isLeft ? 0x0d9488 : 0xe11d48, emissiveIntensity: 1.1 }));
-      m.position.set(Math.cos(a) * 2.55, (t - 0.5) * 1.1, Math.sin(a) * 2.55); gHodge.add(m); nodes.push(m);
+      const a = (TWO_PI_JS * i) / A.n_vertices, rank = rankOf[i] ?? i, t = rank / Math.max(1, A.n_vertices - 1);
+      const isLeft = t < 0.5, isSel = selectedHodgeVertex === i;
+      const col = isSel ? 0xfbbf24 : (isLeft ? 0x2dd4bf : 0xf43f5e);
+      const em = isSel ? 0xd97706 : (isLeft ? 0x0d9488 : 0xe11d48);
+      const m = new THREE.Mesh(new THREE.SphereGeometry(isSel ? 0.21 : 0.13, 16, 16), new THREE.MeshStandardMaterial({ color: col, emissive: em, emissiveIntensity: isSel ? 1.8 : 1.1 }));
+      m.position.set(Math.cos(a) * 2.55, (t - 0.5) * 1.1, Math.sin(a) * 2.55);
+      m.userData = { kind: "hodgeVertex", vertex: i, rank, side: isLeft ? "Left Fiedler Partition (v₂ < 0)" : "Right Fiedler Partition (v₂ ≥ 0)" };
+      gHodge.add(m); nodes.push(m);
     }
     for(const [u, v] of A.edges || []){
-      if(nodes[u] && nodes[v]) gHodge.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([nodes[u].position, nodes[v].position]), new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.4 })));
+      if(nodes[u] && nodes[v]) gHodge.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([nodes[u].position, nodes[v].position]), new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.38 })));
     }
-    if(perm.length) gHodge.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(perm.map(v => nodes[v].position.clone())), new THREE.LineBasicMaterial({ color: 0xfbbf24 })));
+    const sweepSlice = perm.slice(0, Math.max(2, activeCutoff));
+    if(sweepSlice.length) gHodge.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(sweepSlice.map(v => nodes[v].position.clone())), new THREE.LineBasicMaterial({ color: 0xfbbf24 })));
   }
-  // Sync Panel D -> PEPS Edge Cylinder Thickness
+  // Sync Panel D -> PEPS Edge Cylinder Thickness & Selection Highlight
   const frD = DATA?.panel_d?.frames?.[Math.min(pbState.frame, (DATA?.panel_d?.frames?.length||1)-1)];
   if(frD?.lambda_spectra?.length && pepsEdges.length){
     pepsEdges.forEach((cyl, i) => {
       const s0 = frD.lambda_spectra[i]?.[0] ?? 0.5;
-      cyl.scale.set(0.75 + s0 * 1.5, 1, 0.75 + s0 * 1.5);
+      const isSel = selectedPepsEdge === i;
+      cyl.scale.set((isSel ? 1.4 : 0.75) + s0 * 1.5, 1, (isSel ? 1.4 : 0.75) + s0 * 1.5);
+      cyl.material.color.setHex(isSel ? 0xfbbf24 : (i < 3 ? 0xf43f5e : 0x38bdf8));
+    });
+  }
+  if(pepsNodes.length){
+    pepsNodes.forEach((n, i) => {
+      const isSel = selectedPepsNode === i;
+      n.material.color.setHex(isSel ? 0xffffff : (i === 0 ? 0xfbbf24 : 0x2dd4bf));
     });
   }
 }
@@ -1933,6 +2246,7 @@ function set3DMode(m){
   } else if(m === "k") updateKontra3D();
   else if(m === "m") updateHalo3D();
   else if(m === "g") updatePEPS3D();
+  syncUrlHash();
 }
 
 function select3DParticle(sym){
@@ -2151,6 +2465,7 @@ function switchTopTab(view){
     init3D();
     requestAnimationFrame(() => { resize3D(); sync3DFromData(); set3DMode(mode3D); });
   }
+  syncUrlHash();
 }
 $("tabViz").onclick = () => switchTopTab("viz");
 $("tab3D").onclick = () => switchTopTab("3d");
@@ -2178,6 +2493,7 @@ window.addEventListener("keydown", e => {
 });
 
 // Init
+applyUrlHash();
 syncPlaybackBounds(true);
 setStatus("click Load runtime","busy");
 $("btnBoot").disabled=false;

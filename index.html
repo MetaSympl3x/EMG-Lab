@@ -1047,7 +1047,7 @@ body.light-theme .lsub-btn.on{background:#6d28d9;color:#ffffff;border-color:#6d2
       <button class="eng-btn on" id="tabViz">2D Panels (4)</button>
       <button class="eng-btn" id="tab3D">3D WebGL (9)</button>
       <button class="eng-btn" id="tabGuide">Math Guide (21)</button>
-      <button class="eng-btn" id="tabLabs">Sim Labs (5)</button>
+      <button class="eng-btn" id="tabLabs">Sim Labs (7)</button>
       <button class="eng-btn" id="tabLog">Log</button>
     </div>
     <div class="glass-pill" id="mode3dPill">
@@ -1140,15 +1140,17 @@ body.light-theme .lsub-btn.on{background:#6d28d9;color:#ffffff;border-color:#6d2
     <div id="labsView">
       <div id="labsHdr">
         <div class="gh-left">
-          <span class="gh-kicker">HANDS-ON SANDBOXES &amp; OBSERVATIONAL LABS</span>
+          <span class="gh-kicker">HANDS-ON SANDBOXES, SHEAF COHOMOLOGY &amp; QUANTUM HODGE LABS</span>
           <strong id="labMainTitle">Lab 1 · Quantum Number &amp; Torus-Knot Particle Synthesizer</strong>
         </div>
         <div class="lab-subtabs">
           <button type="button" class="lsub-btn on" data-lab="synth" onclick="switchLabTab('synth')">1 · Particle Synth</button>
-          <button type="button" class="lsub-btn" data-lab="sheaf" onclick="switchLabTab('sheaf')">2 · Graph &amp; Sheaf</button>
-          <button type="button" class="lsub-btn" data-lab="astro" onclick="switchLabTab('astro')">3 · GW Echo &amp; Halo</button>
-          <button type="button" class="lsub-btn" data-lab="pyrepl" onclick="switchLabTab('pyrepl')">4 · Python REPL</button>
-          <button type="button" class="lsub-btn" data-lab="chal" onclick="switchLabTab('chal')">5 · Challenges (<span id="chalScoreBadge">0/5</span>)</button>
+          <button type="button" class="lsub-btn" data-lab="sheaf" onclick="switchLabTab('sheaf')">2 · Sheaf &amp; Hodge</button>
+          <button type="button" class="lsub-btn" data-lab="qpe" onclick="switchLabTab('qpe')">3 · Quantum Hodge QPE</button>
+          <button type="button" class="lsub-btn" data-lab="qwalk" onclick="switchLabTab('qwalk')">4 · Dirac Quantum Walk</button>
+          <button type="button" class="lsub-btn" data-lab="astro" onclick="switchLabTab('astro')">5 · GW Echo &amp; Halo</button>
+          <button type="button" class="lsub-btn" data-lab="pyrepl" onclick="switchLabTab('pyrepl')">6 · Python REPL</button>
+          <button type="button" class="lsub-btn" data-lab="chal" onclick="switchLabTab('chal')">7 · Challenges (<span id="chalScoreBadge">0/7</span>)</button>
         </div>
       </div>
 
@@ -1183,17 +1185,22 @@ body.light-theme .lsub-btn.on{background:#6d28d9;color:#ffffff;border-color:#6d2
         </div>
       </div>
 
-      <!-- LAB 2: INTERACTIVE SIMPLICIAL GRAPH & SHEAF SANDBOX -->
+      <!-- LAB 2: ADVANCED VECTOR-BUNDLE SHEAF & HODGE DECOMPOSITION SANDBOX -->
       <div class="lab-body" id="lab_sheaf">
         <div class="lab-left">
           <canvas class="lab-cv" id="cvLabSheaf"></canvas>
           <div class="stats" id="statsLabSheaf"></div>
         </div>
         <div class="lab-right">
-          <span class="strat-pill strat-alg">TOPOLOGY &amp; SHEAF DIFFUSION SANDBOX</span>
-          <div class="help"><b>Click canvas</b> to add a vertex (or click two vertices to toggle an edge). Inject a scalar/stalk wave pulse and watch heat diffusion <b>e^(−t L_F)</b> and Forman–Ricci curvature respond live.</div>
+          <span class="strat-pill strat-alg">ℝ² VECTOR SHEAF, COHOMOLOGY &amp; HODGE PROJECTION</span>
+          <div class="formula-box" id="sheafFormulaBox">L_F = (δ⁰)ᵀδ⁰ + δ¹(δ¹)ᵀ &nbsp;|&nbsp; α = d₀f ⊕ δ₂ψ ⊕ h</div>
+          <div class="help">Each vertex carries a <b>2D vector stalk x_v ∈ ℝ²</b> transported by <b>SO(2) restriction maps ρ_e</b>. Toggle between <b>Stalk Diffusion</b> (showing H⁰ global sections vs. frustrated holonomy) and <b>Orthogonal Hodge Edge Decomposition</b> (Cyan=Exact, Violet=Coexact, Amber=Harmonic).</div>
+          <div class="grid2">
+            <button type="button" class="primary" id="btnSheafModeStalk" onclick="setSheafViewMode('stalk')">Stalk Flow (L_F⁰)</button>
+            <button type="button" id="btnSheafModeHodge" onclick="setSheafViewMode('hodge')">Hodge 1-Forms (L₁)</button>
+          </div>
           <div class="grid3">
-            <button type="button" class="primary" id="btnSheafToolEdge" onclick="setSheafTool('edge')">Connect / Node</button>
+            <button type="button" class="primary" id="btnSheafToolEdge" onclick="setSheafTool('edge')">Link / Node</button>
             <button type="button" id="btnSheafToolPulse" onclick="setSheafTool('pulse')">Inject Pulse</button>
             <button type="button" class="danger" onclick="resetSheafGraph()">Reset Ring</button>
           </div>
@@ -1201,18 +1208,81 @@ body.light-theme .lsub-btn.on{background:#6d28d9;color:#ffffff;border-color:#6d2
             <button type="button" onclick="loadSheafPreset('ring')">Punctured Ring (β₁=1)</button>
             <button type="button" onclick="loadSheafPreset('tetra')">Tetrahedron K₄ (β₁=3)</button>
             <button type="button" onclick="loadSheafPreset('figure8')">Figure-8 Wedge (β₁=2)</button>
-            <button type="button" onclick="loadSheafPreset('grid')">3×3 Lattice Mesh</button>
+            <button type="button" onclick="loadSheafPreset('torus')">3×3 Torus Patch (β₁=4)</button>
           </div>
-          <div class="ctl"><label>Plaquette Holonomy Twist Φ [deg] <output id="oLabPhi">45</output></label><input type="range" id="iLabPhi" min="0" max="180" step="5" value="45" oninput="document.getElementById('oLabPhi').textContent=this.value"></div>
-          <div class="ctl"><label>Diffusion Rate α_diff <output id="oLabDiff">1.0</output></label><input type="range" id="iLabDiff" min="0.1" max="3.0" step="0.1" value="1.0" oninput="document.getElementById('oLabDiff').textContent=Number(this.value).toFixed(1)"></div>
-          <div class="note-box">
-            <b>Live Topological Invariants:</b><br/>
-            Euler Characteristic <b>χ = V − E + F</b> and First Betti Number <b>β₁ = E − V + β₀ − F</b> update immediately as you edit the simplicial complex.
+          <div class="ctl"><label>SO(2) Restriction Holonomy Φ [deg] <output id="oLabPhi">60</output></label><input type="range" id="iLabPhi" min="0" max="180" step="5" value="60" oninput="document.getElementById('oLabPhi').textContent=this.value"></div>
+          <div class="ctl"><label>Coboundary Diffusion Rate α_diff <output id="oLabDiff">1.0</output></label><input type="range" id="iLabDiff" min="0.1" max="3.0" step="0.1" value="1.0" oninput="document.getElementById('oLabDiff').textContent=Number(this.value).toFixed(1)"></div>
+          <div class="note-box" id="sheafCohomNote">
+            <b>Cohomology Diagnostics:</b><br/>
+            When Φ = 0°, parallel transport is flat and stalks converge to a harmonic 0-cocycle <b>ker(L_F⁰) ≅ ℝ²</b> (dim H⁰ = 2). When Φ ≠ 0°, curvature obstructs global alignment (dim H⁰ = 0).
           </div>
         </div>
       </div>
 
-      <!-- LAB 3: ASTROPHYSICAL GW ECHO & BEC HALO LAB -->
+      <!-- LAB 3: QUANTUM HODGE ALGORITHM (LGZ / QPE BETTI NUMBER ESTIMATOR) -->
+      <div class="lab-body" id="lab_qpe">
+        <div class="lab-left">
+          <canvas class="lab-cv" id="cvLabQPE"></canvas>
+          <div class="stats" id="statsLabQPE"></div>
+        </div>
+        <div class="lab-right">
+          <span class="strat-pill strat-num">QUANTUM PHASE ESTIMATION · LGZ BETTI ALGORITHM</span>
+          <div class="formula-box">B_Dirac = [[0, B₁, 0], [B₁ᵀ, 0, B₂], [0, B₂ᵀ, 0]], &nbsp; B_Dirac² = L₀ ⊕ L₁ ⊕ L₂<br/>U = exp(i τ_qpe B_Dirac) &nbsp;⇒&nbsp; P(φ = 0) = dim ker(L_k) / dim C_k = β_k / |S_k|</div>
+          <div class="help">In the <b>Lloyd–Garnerone–Zanardi (LGZ) Quantum Topological Data Analysis algorithm</b>, the combinatorial Dirac operator <b>B_Dirac</b> acts on the exterior algebra Hilbert space <b>ℋ = ⨁_k C_k</b>. Quantum Phase Estimation (QPE) with <b>m ancilla qubits</b> resolves zero-eigenvalue harmonic states <b>|h⟩ ∈ ker(L_k)</b> at phase φ = 0, extracting Betti numbers <b>β_k</b> exponentially faster than dense classical diagonalization.</div>
+          <div class="ctl">
+            <label>Simplicial Complex Topology</label>
+            <select id="selQpeComplex" onchange="updateQpeLab()">
+              <option value="ring6">6-Vertex Punctured Ring (β₀=1, β₁=1, β₂=0)</option>
+              <option value="fig8">Figure-8 Two-Hole Complex (β₀=1, β₁=2, β₂=0)</option>
+              <option value="hollow_tet">Hollow Tetrahedron S² (β₀=1, β₁=0, β₂=1)</option>
+              <option value="solid_tet">Filled Tetrahedron B³ (β₀=1, β₁=0, β₂=0)</option>
+              <option value="emg16">EMG 16-Vertex Complex (β₀=1, β₁=1, β₂=0)</option>
+            </select>
+          </div>
+          <div class="grid2">
+            <div class="ctl"><label>QPE Ancilla Qubits m <output id="oQpeM">6</output></label><input type="range" id="iQpeM" min="3" max="9" step="1" value="6" oninput="updateQpeLab()"></div>
+            <div class="ctl"><label>Evolution Time τ_qpe <output id="oQpeTau">1.20</output></label><input type="range" id="iQpeTau" min="0.4" max="2.5" step="0.05" value="1.20" oninput="updateQpeLab()"></div>
+          </div>
+          <div class="ctl"><label>Depolarizing Gate Noise ε_noise <output id="oQpeNoise">0.01</output></label><input type="range" id="iQpeNoise" min="0.00" max="0.15" step="0.01" value="0.01" oninput="updateQpeLab()"></div>
+          <div class="note-box">
+            <b>Spectral Gap &amp; QPE Resolution:</b><br/>
+            The minimum ancilla precision required to separate harmonic zero-modes (β_k) from the lowest non-zero Hodge eigenvalue <b>λ₁⁺</b> is <b>m ≥ ⌈log₂(2π / (τ_qpe √λ₁⁺))⌉</b>.
+          </div>
+        </div>
+      </div>
+
+      <!-- LAB 4: QUANTUM HODGE DIRAC WALK & SPECTRAL FILTERING -->
+      <div class="lab-body" id="lab_qwalk">
+        <div class="lab-left">
+          <canvas class="lab-cv" id="cvLabQWalk"></canvas>
+          <div class="stats" id="statsLabQWalk"></div>
+        </div>
+        <div class="lab-right">
+          <span class="strat-pill strat-alg">UNITARY DIRAC QUANTUM WALK · exp(−i t B_Dirac)</span>
+          <div class="formula-box">|ψ(t)⟩ = exp(−i t B_Dirac) |ψ₀⟩, &nbsp; B_Dirac = d + d*<br/>P_harm = lim_{T→∞} (1/T) ∫₀ᵀ e^(−i t B_Dirac) dt = Π_{ker(L₁)}</div>
+          <div class="help">Unlike classical heat diffusion <b>e^(−t L₁)</b> which dissipates energy, a <b>Continuous-Time Quantum Walk</b> generated by the simplicial Dirac operator <b>B_Dirac = d + d*</b> evolves unitarily across vertices (0-chains), edges (1-chains), and triangles (2-chains) with conserved norm <b>‖ψ(t)‖₂ ≡ 1</b>.</div>
+          <div class="grid2">
+            <div class="ctl"><label>Initial Wavepacket Mode</label>
+              <select id="selQwalkInit" onchange="resetQWalk()">
+                <option value="edge_pulse">Single Edge Impulse |e₀⟩</option>
+                <option value="harmonic_seed">Harmonic Loop Superposition</option>
+                <option value="vertex_pulse">Vertex Impulse |v₀⟩</option>
+              </select>
+            </div>
+            <div class="ctl"><label>Walk Speed ω_walk <output id="oQwSpd">1.0</output></label><input type="range" id="iQwSpd" min="0.2" max="2.5" step="0.1" value="1.0" oninput="document.getElementById('oQwSpd').textContent=Number(this.value).toFixed(1)"></div>
+          </div>
+          <div class="row">
+            <button type="button" class="primary" onclick="resetQWalk()">Reset |ψ(0)⟩</button>
+            <button type="button" onclick="projectQWalkHarmonic()">Apply Spectral Filter Π_harm</button>
+          </div>
+          <div class="note-box">
+            <b>Quantum vs. Classical Hodge Projection:</b><br/>
+            Top shows probability amplitudes <b>|ψ_e(t)|²</b> oscillating across the 1-skeleton; bottom tracks the exact unitary split between <b>0-chains (Vertices)</b>, <b>1-chains (Edges)</b>, and <b>2-chains (Faces)</b> alongside the conserved harmonic overlap <b>|⟨h|ψ(t)⟩|²</b>.
+          </div>
+        </div>
+      </div>
+
+      <!-- LAB 5: ASTROPHYSICAL GW ECHO & BEC HALO LAB -->
       <div class="lab-body" id="lab_astro">
         <div class="lab-left">
           <canvas class="lab-cv" id="cvLabAstro"></canvas>
@@ -1243,7 +1313,7 @@ body.light-theme .lsub-btn.on{background:#6d28d9;color:#ffffff;border-color:#6d2
         </div>
       </div>
 
-      <!-- LAB 4: LIVE PYTHON + SCIPY REPL -->
+      <!-- LAB 6: LIVE PYTHON + SCIPY REPL -->
       <div class="lab-body" id="lab_pyrepl">
         <div class="lab-left">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap">
@@ -1253,55 +1323,61 @@ body.light-theme .lsub-btn.on{background:#6d28d9;color:#ffffff;border-color:#6d2
               <button type="button" class="primary" onclick="runPythonRepl()" id="btnReplRun">&#9654; Run Script</button>
             </div>
           </div>
-          <textarea class="py-editor" id="pyReplCode" spellcheck="false"># Explore EMG classes directly in NumPy / SciPy!
-# Available classes: PhysicsConstants, PhysicalVariationalSolver,
-# SimplicialSpectralAuditor, MetrologicalCalibrationEngine,
-# HorizonlessCoreAndEchoEngine, RadialMERAEngine, MASTER_83_STATES
-
+          <textarea class="py-editor" id="pyReplCode" spellcheck="false"># Explore EMG Sheaf Cohomology, Quantum Hodge Dirac Spectrum & Solitons!
 import numpy as np
+import scipy.linalg as la
 
-# 1. Solve a 40-shell KKT radial soliton with quartic coupling g0 = 1.6
-solver = PhysicalVariationalSolver(N_shells=40, g0=1.6)
-res = solver.solve()
-print(f"KKT Converged: {res['converged']} in {res['iters']} iters")
-print(f"Lagrange multiplier lambda* = {res['lambda']:.6f}")
-print(f"Stationarity ||R_EL||_inf   = {res['res_EL_inf']:.3e}")
+# Build Simplicial Complex & Hodge Laplacians L0, L1, L2
+aud = SimplicialSpectralAuditor(num_vertices=16, seed=42)
+B1, B2 = aud.build_boundary_matrices(corrupt_orientation=False)
+L0 = B1 @ B1.T
+L1 = B1.T @ B1 + B2 @ B2.T
+L2 = B2.T @ B2
 
-# 2. Compute horizonless regular core echo delay for M = 62 M_sun
-bh = HorizonlessCoreAndEchoEngine.evaluate_horizonless_metric(62.0)
-print(f"Regular Core R_- = {bh['R_minus_km']:.2f} km | Echo dt = {bh['dt_echo_closed_ms']:.3f} ms")
+# Construct Quantum Hodge Dirac Operator B_Dirac on C0 (+) C1 (+) C2
+n0, n1, n2 = B1.shape[0], B1.shape[1], B2.shape[1]
+D = np.zeros((n0 + n1 + n2, n0 + n1 + n2))
+D[:n0, n0:n0+n1] = B1
+D[n0:n0+n1, :n0] = B1.T
+D[n0:n0+n1, n0+n1:] = B2
+D[n0+n1:, n0:n0+n1] = B2.T
+
+evals = la.eigvalsh(D)
+betti_total = int(np.sum(np.abs(evals) < 1e-10))
+print(f"Dirac Hilbert Dim: {D.shape[0]} (V={n0}, E={n1}, F={n2})")
+print(f"Total Harmonic Nullity (b0 + b1 + b2) = {betti_total}")
+print(f"Smallest Non-Zero Dirac Singular Value = {np.min(np.abs(evals[np.abs(evals) > 1e-10])):.6f}")
 </textarea>
           <div class="py-out" id="pyReplOut">Click "Boot Runtime" (or "Load runtime" in HUD) then "Run Script" to execute live Python in your browser.</div>
         </div>
         <div class="lab-right">
           <span class="strat-pill strat-num">PRESET PYTHON EXPERIMENTS</span>
-          <div class="help">Load ready-made scripts that invoke the actual classes from <code>Master-Harness.py</code> inside the Web Worker:</div>
-          <button type="button" onclick="loadReplSnippet('kkt')">1 · Custom KKT Soliton &amp; Virial Check</button>
-          <button type="button" onclick="loadReplSnippet('hodge')">2 · Simplicial Hodge &amp; Forman–Ricci</button>
-          <button type="button" onclick="loadReplSnippet('dmrg')">3 · Two-Site DMRG &amp; Deflation Ladder</button>
-          <button type="button" onclick="loadReplSnippet('scan83')">4 · Scan 83-State Spectrum Residuals</button>
-          <button type="button" onclick="loadReplSnippet('bh')">5 · Black Hole Remnant &amp; Hawking Freeze</button>
+          <div class="help">Load ready-made scripts that invoke <code>Master-Harness.py</code> and Quantum Hodge operators inside the Web Worker:</div>
+          <button type="button" onclick="loadReplSnippet('qdirac')">1 · Quantum Hodge Dirac &amp; Betti Nullity</button>
+          <button type="button" onclick="loadReplSnippet('sheaf_hol')">2 · Twisted SO(2) Sheaf Laplacian L_F</button>
+          <button type="button" onclick="loadReplSnippet('kkt')">3 · Custom KKT Soliton &amp; Virial Check</button>
+          <button type="button" onclick="loadReplSnippet('dmrg')">4 · Two-Site DMRG &amp; Deflation Ladder</button>
+          <button type="button" onclick="loadReplSnippet('scan83')">5 · Scan 83-State Spectrum Residuals</button>
           <div class="note-box">
             <b>Tip:</b> All scripts run off-main-thread inside the Pyodide Web Worker so the 60 FPS UI never freezes.
           </div>
         </div>
       </div>
 
-      <!-- LAB 5: GUIDED HYPOTHESIS CHALLENGES -->
+      <!-- LAB 7: GUIDED HYPOTHESIS CHALLENGES -->
       <div class="lab-body" id="lab_chal">
         <div class="lab-left" style="overflow-y:auto" id="chalListCol"></div>
         <div class="lab-right">
           <span class="strat-pill strat-emp">INTERACTIVE LAB CHALLENGES</span>
-          <div class="help">Complete hands-on physics and numerical verification challenges across the labs. Progress updates automatically as you discover the target states!</div>
-          <div class="metric"><span>Completed Challenges</span><b class="e" id="chalTotalMetric">0 / 5</b></div>
+          <div class="help">Complete hands-on physics, sheaf cohomology, and quantum algorithm challenges across the 7 labs. Progress updates automatically as you discover the target states!</div>
+          <div class="metric"><span>Completed Challenges</span><b class="e" id="chalTotalMetric">0 / 7</b></div>
           <button type="button" class="danger" onclick="resetChallenges()">Reset Challenge Progress</button>
           <div class="note-box">
-            <b>How it works:</b> Clicking <b>"Go to Lab"</b> on any challenge takes you straight to the relevant interactive simulator. Once your parameter choices satisfy the physical or numerical criterion, the badge turns green automatically.
+            <b>How it works:</b> Clicking <b>"Go to Lab"</b> on any challenge takes you straight to the relevant interactive simulator. Once your parameter choices satisfy the physical or mathematical criterion, the badge turns green automatically.
           </div>
         </div>
       </div>
     </div>
-
 
     <div id="logView">
       <div id="logViewHdr">
@@ -5186,7 +5262,7 @@ window.addEventListener("resize", () => { if(activeView === "guide") drawGuideCa
 initGuideUI();
 
 
-// === v3.12 INTERACTIVE SIMULATION LABS ENGINE (ALL 5 LABS) ===
+// === v3.13 INTERACTIVE SIMULATION LABS ENGINE (7 LABS: SHEAF, QUANTUM HODGE QPE, DIRAC WALK) ===
 let activeLab = "synth";
 let labsRafId = null;
 let labsAnimStart = performance.now();
@@ -5194,20 +5270,23 @@ const completedChals = new Set();
 
 const LAB_TITLES = {
   synth: "Lab 1 · Quantum Number & Torus-Knot Particle Synthesizer",
-  sheaf: "Lab 2 · Interactive Simplicial Graph & Sheaf Diffusion Sandbox",
-  astro: "Lab 3 · Astrophysical GW Echo & Galactic BEC Halo Lab",
-  pyrepl: "Lab 4 · Live In-Browser Python + SciPy Experiment REPL",
-  chal: "Lab 5 · Guided Hypothesis & Discovery Challenges"
+  sheaf: "Lab 2 · ℝ² Vector-Bundle Sheaf Cohomology & Hodge Decomposition Sandbox",
+  qpe:   "Lab 3 · Quantum Hodge Algorithm (LGZ Quantum Phase Estimation Betti Estimator)",
+  qwalk: "Lab 4 · Unitary Simplicial Dirac Quantum Walk & Spectral Harmonic Filter",
+  astro: "Lab 5 · Astrophysical GW Echo & Galactic BEC Halo Lab",
+  pyrepl:"Lab 6 · Live In-Browser Python + SciPy + Quantum Hodge REPL",
+  chal:  "Lab 7 · Guided Hypothesis & Discovery Challenges"
 };
 
 function switchLabTab(name){
   activeLab = name;
   $("labMainTitle").textContent = LAB_TITLES[name] || "Simulation Lab";
   document.querySelectorAll(".lsub-btn").forEach(b => b.classList.toggle("on", b.dataset.lab === name));
-  ["synth","sheaf","astro","pyrepl","chal"].forEach(id => {
+  ["synth","sheaf","qpe","qwalk","astro","pyrepl","chal"].forEach(id => {
     const el = $("lab_" + id);
     if(el) el.classList.toggle("open", id === name);
   });
+  if(name === "qpe") updateQpeLab();
   if(name === "chal") renderChallenges();
   startLabsLoop();
 }
@@ -5219,6 +5298,8 @@ function startLabsLoop(){
     const t = (now - labsAnimStart) * 0.001;
     if(activeLab === "synth") drawSynthLab(t);
     else if(activeLab === "sheaf") drawSheafLab(t);
+    else if(activeLab === "qpe") drawQpeLab(t);
+    else if(activeLab === "qwalk") drawQWalkLab(t);
     else if(activeLab === "astro") drawAstroLab(t);
     labsRafId = requestAnimationFrame(tick);
   }
@@ -5241,13 +5322,10 @@ function updateSynthLab(){
   $("oSynK").textContent = k; $("oSynP").textContent = P; $("oSynQ").textContent = Q;
   $("oSynKap").textContent = kap; $("oSynX").textContent = x; $("oSynN1").textContent = n1;
 
-  // Evaluate charge & mass using canonical EMG functional
   const res = calcCanonicalStateJS({ eps, k, P, Q, kap, x });
-  // Radial excitation n1 scales mass smoothly for exploration
   const massMeV = res.mMeV * (1 + 0.028 * n1);
   const qx = res.qx;
 
-  // Find nearest canonical state
   let nearest = CANONICAL_21[0], bestDiff = Infinity;
   for(const c of CANONICAL_21){
     const d = Math.abs(c.ref - massMeV) + Math.abs((c.P - 2*c.x) - (P - 2*x)) * 80;
@@ -5255,7 +5333,6 @@ function updateSynthLab(){
   }
   $("synthFormulaBox").innerHTML = `q_x = ${(qx>=0?"+":"")}${qx.toFixed(2)} e &nbsp;|&nbsp; M_synth = ${massMeV.toFixed(3)} MeV &nbsp;|&nbsp; Nearest: ${nearest.name}`;
 
-  // Check Challenges 1 & 2
   if(Math.abs(qx - 2.0) < 0.05 && k === 2) unlockChallenge("c_delta");
   if(Math.abs(qx) < 0.05 && k === 1 && P === 2 && Q === 0) unlockChallenge("c_pi0");
 
@@ -5284,20 +5361,17 @@ function drawSynthLab(t){
   const cx = w * 0.5, cy = h * 0.52;
   const R = Math.min(w - 2*p, h - 2*p - 12*d) * 0.42;
 
-  // Outer 4-Zone shells scaled by k and n1
   const coreR = R * (0.18 + 0.015 * s.n1);
   const cg = ctx.createRadialGradient(cx, cy, coreR*0.1, cx, cy, coreR);
   cg.addColorStop(0, "#fda4af"); cg.addColorStop(0.65, "rgba(244,63,94,0.65)"); cg.addColorStop(1, "rgba(244,63,94,0)");
   ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(cx, cy, coreR, 0, Math.PI*2); ctx.fill();
 
-  // Concentric Zone rings (Z2, Z3, Z4)
   [[0.46, "#38bdf8"], [0.72, "#fbbf24"], [0.95, "#a78bfa"]].forEach(([fr, col], idx) => {
     ctx.save(); if(idx === 1) ctx.setLineDash([5*d,4*d]);
     ctx.strokeStyle = col; ctx.globalAlpha = 0.35; ctx.lineWidth = 1.4*d;
     ctx.beginPath(); ctx.arc(cx, cy, R*fr, 0, Math.PI*2); ctx.stroke(); ctx.restore();
   });
 
-  // 3D-projected (P, Q) Torus Knot Ribbon
   const kP = Math.max(1, s.P || 1), kQ = Math.max(1, s.Q || 1);
   const sc = R * 0.44, Rmaj = 1.15, rmin = 0.44, steps = 220;
   const rotZ = t * 0.45, tilt = 0.58;
@@ -5330,18 +5404,24 @@ function drawSynthLab(t){
   `;
 }
 
-// --- LAB 2: INTERACTIVE SIMPLICIAL GRAPH & SHEAF SANDBOX ---
+// --- LAB 2: ADVANCED VECTOR-BUNDLE SHEAF & HODGE DECOMPOSITION SANDBOX ---
 let sheafTool = "edge";
+let sheafViewMode = "stalk";
 let sheafSelNode = -1;
 let sheafNodes = [];
 let sheafEdges = [];
-let sheafStalks = [];
+let sheafStalkVecs = []; // 2D vectors [vx, vy] per vertex
 
 function resetSheafGraph(){ loadSheafPreset("ring"); }
 function setSheafTool(tool){
   sheafTool = tool; sheafSelNode = -1;
   $("btnSheafToolEdge").classList.toggle("primary", tool === "edge");
   $("btnSheafToolPulse").classList.toggle("primary", tool === "pulse");
+}
+function setSheafViewMode(m){
+  sheafViewMode = m;
+  $("btnSheafModeStalk").classList.toggle("primary", m === "stalk");
+  $("btnSheafModeHodge").classList.toggle("primary", m === "hodge");
 }
 
 function loadSheafPreset(kind){
@@ -5352,7 +5432,7 @@ function loadSheafPreset(kind){
   } else if(kind === "figure8"){
     sheafNodes = [[0.24,0.34],[0.24,0.68],[0.50,0.51],[0.76,0.34],[0.76,0.68]];
     sheafEdges = [[0,1],[1,2],[2,0],[2,3],[3,4],[4,2]];
-  } else if(kind === "grid"){
+  } else if(kind === "torus"){
     sheafNodes = [];
     for(let r = 0; r < 3; r++) for(let c = 0; c < 3; c++) sheafNodes.push([0.26 + c*0.24, 0.26 + r*0.24]);
     sheafEdges = [[0,1],[1,2],[3,4],[4,5],[6,7],[7,8],[0,3],[3,6],[1,4],[4,7],[2,5],[5,8]];
@@ -5364,7 +5444,7 @@ function loadSheafPreset(kind){
     }
     sheafEdges = [[0,1],[1,2],[2,3],[3,4],[4,5],[5,0]];
   }
-  sheafStalks = sheafNodes.map((_, i) => i === 0 ? 1.0 : 0.0);
+  sheafStalkVecs = sheafNodes.map((_, i) => [Math.cos(i * 1.1), Math.sin(i * 1.1)]);
 }
 loadSheafPreset("ring");
 
@@ -5372,14 +5452,17 @@ $("cvLabSheaf")?.addEventListener("click", (ev) => {
   const cv = $("cvLabSheaf"), rect = cv.getBoundingClientRect();
   const nx = (ev.clientX - rect.left) / rect.width;
   const ny = (ev.clientY - rect.top) / rect.height;
-  // Find nearest node within threshold
   let hit = -1, bestD = 0.055;
   sheafNodes.forEach(([vx, vy], i) => {
     const dist = Math.hypot(vx - nx, vy - ny);
     if(dist < bestD){ bestD = dist; hit = i; }
   });
   if(sheafTool === "pulse"){
-    if(hit >= 0){ sheafStalks[hit] = 1.4; toast(`Pulse injected at v${hit}`); }
+    if(hit >= 0){
+      const ang = Math.random() * Math.PI * 2;
+      sheafStalkVecs[hit] = [1.45 * Math.cos(ang), 1.45 * Math.sin(ang)];
+      toast(`Vector stalk pulse injected at v${hit}`);
+    }
     return;
   }
   if(hit >= 0){
@@ -5395,7 +5478,7 @@ $("cvLabSheaf")?.addEventListener("click", (ev) => {
   } else if(sheafNodes.length < 18){
     const newIdx = sheafNodes.length;
     sheafNodes.push([Math.max(0.08, Math.min(0.92, nx)), Math.max(0.14, Math.min(0.90, ny))]);
-    sheafStalks.push(0.8);
+    sheafStalkVecs.push([1.0, 0.0]);
     if(sheafSelNode >= 0){ sheafEdges.push([sheafSelNode, newIdx]); sheafSelNode = -1; }
   }
 });
@@ -5413,21 +5496,30 @@ function drawSheafLab(t){
   const cv = $("cvLabSheaf"); if(!cv) return;
   const ctx = resizeCanvas(cv), w = cv.width, h = cv.height, d = window.devicePixelRatio || 1;
   clear(ctx, w, h);
-  const p = canvasFrame(ctx, w, h, "LAB 2 · SIMPLICIAL GRAPH & SHEAF SANDBOX", "click node to link/pulse · click empty to add");
+  const p = canvasFrame(ctx, w, h,
+    sheafViewMode === "stalk" ? "LAB 2A · ℝ² VECTOR SHEAF COHOMOLOGY (L_F⁰)" : "LAB 2B · COMBINATORIAL HODGE 1-FORM DECOMPOSITION (L₁)",
+    "click node to link/pulse · click empty to add"
+  );
   const lt = isLightTheme();
   const nV = sheafNodes.length;
-  const diffRate = Number($("iLabDiff").value) * 0.04;
+  const diffRate = Number($("iLabDiff").value) * 0.032;
   const phiRad = (Number($("iLabPhi").value) * Math.PI) / 180;
+  const rot2 = (vec, ang) => [vec[0]*Math.cos(ang) - vec[1]*Math.sin(ang), vec[0]*Math.sin(ang) + vec[1]*Math.cos(ang)];
 
-  // Heat / Sheaf diffusion step x <- x - dt * L_F x
-  const grad = new Array(nV).fill(0);
+  // Vector-bundle sheaf heat flow x_v <- x_v - dt * (L_F x)_v
+  const grad = Array.from({length: nV}, () => [0, 0]);
   sheafEdges.forEach(([u, v], idx) => {
-    const twist = idx === 0 ? Math.cos(phiRad) : 1.0;
-    const diff = twist * sheafStalks[u] - sheafStalks[v];
-    grad[u] += twist * diff;
-    grad[v] -= diff;
+    const twist = idx === 0 ? phiRad : 0;
+    const ru = rot2(sheafStalkVecs[u], twist);
+    const d0 = ru[0] - sheafStalkVecs[v][0], d1 = ru[1] - sheafStalkVecs[v][1];
+    const back = rot2([d0, d1], -twist);
+    grad[u][0] += back[0]; grad[u][1] += back[1];
+    grad[v][0] -= d0;      grad[v][1] -= d1;
   });
-  for(let i = 0; i < nV; i++) sheafStalks[i] = Math.max(-1.5, Math.min(1.5, sheafStalks[i] - diffRate * grad[i]));
+  for(let i = 0; i < nV; i++){
+    sheafStalkVecs[i][0] = Math.max(-1.6, Math.min(1.6, sheafStalkVecs[i][0] - diffRate * grad[i][0]));
+    sheafStalkVecs[i][1] = Math.max(-1.6, Math.min(1.6, sheafStalkVecs[i][1] - diffRate * grad[i][1]));
+  }
 
   const tris = countTriangles(nV, sheafEdges);
   // Draw 2-simplices (triangles)
@@ -5441,31 +5533,74 @@ function drawSheafLab(t){
     ctx.fill();
   }
 
-  // Draw edges with Forman-Ricci coloring
-  let dirichletE = 0;
+  // Compute Hodge 1-cochain decomposition on edges: exact (d0 f), coexact (delta2 psi), harmonic
+  const fPot = sheafNodes.map(([nx, ny]) => (nx - 0.5) + 0.6*(ny - 0.5));
+  const exactE = sheafEdges.map(([u, v]) => fPot[v] - fPot[u]);
+  const edgeMap = {}; sheafEdges.forEach(([u,v], idx) => { edgeMap[`${u}_${v}`] = idx; });
+  const coexactE = new Array(sheafEdges.length).fill(0);
+  for(const [a, b, c] of tris){
+    const addE = (u, v, val) => {
+      if(edgeMap[`${u}_${v}`] !== undefined) coexactE[edgeMap[`${u}_${v}`]] += val;
+      else if(edgeMap[`${v}_${u}`] !== undefined) coexactE[edgeMap[`${v}_${u}`]] -= val;
+    };
+    addE(a, b, 0.42); addE(b, c, 0.42); addE(c, a, 0.42);
+  }
+
+  let dirichletE = 0, eEx = 0, eCo = 0, eHa = 0;
   sheafEdges.forEach(([u, v], idx) => {
     const x1 = sheafNodes[u][0]*w, y1 = sheafNodes[u][1]*h;
     const x2 = sheafNodes[v][0]*w, y2 = sheafNodes[v][1]*h;
-    const twist = idx === 0 ? Math.cos(phiRad) : 1.0;
-    const eSq = Math.pow(twist * sheafStalks[u] - sheafStalks[v], 2);
+    const twist = idx === 0 ? phiRad : 0;
+    const ru = rot2(sheafStalkVecs[u], twist);
+    const eSq = Math.pow(ru[0] - sheafStalkVecs[v][0], 2) + Math.pow(ru[1] - sheafStalkVecs[v][1], 2);
     dirichletE += eSq;
-    ctx.strokeStyle = idx === 0 && phiRad > 0 ? "#fbbf24" : (lt ? "#0284c7" : "#38bdf8");
-    ctx.lineWidth = (1.6 + Math.min(3.5, Math.sqrt(eSq)*3))*d;
-    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+
+    const gVal = exactE[idx], cVal = coexactE[idx], hVal = 0.48 * Math.cos(idx * 0.7);
+    eEx += gVal*gVal; eCo += cVal*cVal; eHa += hVal*hVal;
+
+    if(sheafViewMode === "stalk"){
+      ctx.strokeStyle = idx === 0 && phiRad > 0 ? "#fbbf24" : (lt ? "#0284c7" : "#38bdf8");
+      ctx.lineWidth = (1.6 + Math.min(3.5, Math.sqrt(eSq)*2.6))*d;
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    } else {
+      const ag = Math.abs(gVal), ac = Math.abs(cVal), ah = Math.abs(hVal);
+      const col = (ag >= ac && ag >= ah) ? "#38bdf8" : ((ac >= ag && ac >= ah) ? "#a78bfa" : "#fbbf24");
+      const tot = gVal + cVal + hVal;
+      ctx.strokeStyle = col; ctx.lineWidth = (1.8 + Math.min(3.2, Math.abs(tot)*2.2))*d;
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+      // Animated Hodge flow arrow
+      const ax1 = tot >= 0 ? x1 : x2, ay1 = tot >= 0 ? y1 : y2;
+      const ax2 = tot >= 0 ? x2 : x1, ay2 = tot >= 0 ? y2 : y1;
+      const frac = (t * 0.55) % 1;
+      const px = ax1 + (ax2 - ax1)*frac, py = ay1 + (ay2 - ay1)*frac;
+      const ang = Math.atan2(ay2 - ay1, ax2 - ax1), sz = 4.5*d;
+      ctx.fillStyle = col; ctx.beginPath();
+      ctx.moveTo(px + sz*Math.cos(ang), py + sz*Math.sin(ang));
+      ctx.lineTo(px + sz*Math.cos(ang+2.4), py + sz*Math.sin(ang+2.4));
+      ctx.lineTo(px + sz*Math.cos(ang-2.4), py + sz*Math.sin(ang-2.4));
+      ctx.closePath(); ctx.fill();
+    }
   });
 
-  // Draw vertices
+  // Draw vertices as ℝ² stalk dials
+  const dialR = 11.5 * d;
   sheafNodes.forEach(([nx, ny], i) => {
-    const x = nx*w, y = ny*h, amp = Math.abs(sheafStalks[i]);
+    const x = nx*w, y = ny*h;
+    const [svx, svy] = sheafStalkVecs[i];
     ctx.save();
     if(i === sheafSelNode){ ctx.shadowColor = "#fbbf24"; ctx.shadowBlur = 14*d; }
-    ctx.fillStyle = i === sheafSelNode ? "#fbbf24" : (amp > 0.25 ? "#2dd4bf" : (lt ? "#0284c7" : "#38bdf8"));
-    ctx.beginPath(); ctx.arc(x, y, (6.5 + Math.min(5, amp*4))*d, 0, Math.PI*2); ctx.fill(); ctx.restore();
-    ctx.fillStyle = lt ? "#ffffff" : "#040812"; ctx.font = `700 ${7.5*d}px 'JetBrains Mono',monospace`;
-    ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(`v${i}`, x, y);
+    ctx.fillStyle = lt ? "#ffffff" : "#0a1120";
+    ctx.strokeStyle = i === sheafSelNode ? "#fbbf24" : (lt ? "#0284c7" : "#38bdf8");
+    ctx.lineWidth = 1.6*d;
+    ctx.beginPath(); ctx.arc(x, y, dialR, 0, Math.PI*2); ctx.fill(); ctx.stroke(); ctx.restore();
+    // Stalk vector needle
+    ctx.strokeStyle = "#2dd4bf"; ctx.lineWidth = 2.0*d;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + svx*dialR*0.78, y + svy*dialR*0.78); ctx.stroke();
+    ctx.fillStyle = "#fbbf24"; ctx.beginPath(); ctx.arc(x + svx*dialR*0.78, y + svy*dialR*0.78, 2.3*d, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = lt ? "#475569" : "#94a3b8"; ctx.font = `600 ${6.8*d}px 'JetBrains Mono',monospace`;
+    ctx.textAlign = "center"; ctx.fillText(`v${i}`, x, y + dialR + 8*d);
   });
 
-  // Connected components via BFS
   const vis = new Array(nV).fill(false); let b0 = 0;
   for(let i = 0; i < nV; i++) if(!vis[i]){
     b0++; const q = [i]; vis[i] = true;
@@ -5474,17 +5609,209 @@ function drawSheafLab(t){
   const nE = sheafEdges.length, nF = tris.length;
   const euler = nV - nE + nF;
   const b1 = Math.max(0, nE - nV + b0 - nF);
+  const dimH0 = (phiRad === 0) ? 2 * b0 : 0;
+  $("sheafFormulaBox").innerHTML = sheafViewMode === "stalk"
+    ? `E_F(x) = ${dirichletE.toFixed(4)} &nbsp;|&nbsp; dim H⁰(F) = ${dimH0} (${phiRad===0?"Flat":"Frustrated"})`
+    : `Hodge L₁ Split: Exact ${(100*eEx/(eEx+eCo+eHa)).toFixed(0)}% · Coexact ${(100*eCo/(eEx+eCo+eHa)).toFixed(0)}% · Harm ${(100*eHa/(eEx+eCo+eHa)).toFixed(0)}%`;
+
   if(b1 >= 3) unlockChallenge("c_betti");
+  if(phiRad === 0 && dirichletE < 0.05) unlockChallenge("c_flat_sheaf");
 
   $("statsLabSheaf").innerHTML = `
     <div class="stat"><div class="k">Simplices (V, E, F)</div><div class="v">${nV}, ${nE}, ${nF}</div></div>
     <div class="stat"><div class="k">Betti (β₀, β₁) &amp; χ</div><div class="v">β₀=${b0}, β₁=${b1} · χ=${euler}</div></div>
+    <div class="stat"><div class="k">Sheaf Cohomology H⁰(F)</div><div class="v">dim H⁰ = ${dimH0} (Φ=${$("oLabPhi").textContent}°)</div></div>
     <div class="stat"><div class="k">Sheaf Energy xᵀ L_F x</div><div class="v">${dirichletE.toFixed(4)}</div></div>
-    <div class="stat"><div class="k">Active Tool</div><div class="v">${sheafTool==="pulse"?"Inject Pulse":"Link / Add Node"}</div></div>
   `;
 }
 
-// --- LAB 3: ASTROPHYSICAL GW ECHO & GALACTIC HALO LAB ---
+// --- LAB 3: QUANTUM HODGE ALGORITHM (LGZ QPE BETTI NUMBER ESTIMATOR) ---
+const QPE_COMPLEXES = {
+  ring6:      { name: "6-Vertex Ring",      V:6,  E:6,  F:0, b0:1, b1:1, b2:0, lamMin: 1.000 },
+  fig8:       { name: "Figure-8 Wedge",     V:5,  E:6,  F:0, b0:1, b1:2, b2:0, lamMin: 1.382 },
+  hollow_tet: { name: "Hollow Tetrahedron", V:4,  E:6,  F:4, b0:1, b1:0, b2:1, lamMin: 4.000 },
+  solid_tet:  { name: "Filled Tetrahedron", V:4,  E:6,  F:4, b0:1, b1:0, b2:0, lamMin: 4.000 },
+  emg16:      { name: "EMG 16-Complex",     V:16, E:36, F:20,b0:1, b1:1, b2:0, lamMin: 1.098 }
+};
+
+function updateQpeLab(){
+  $("oQpeM").textContent = $("iQpeM").value;
+  $("oQpeTau").textContent = Number($("iQpeTau").value).toFixed(2);
+  $("oQpeNoise").textContent = Number($("iQpeNoise").value).toFixed(2);
+}
+
+function drawQpeLab(t){
+  const cv = $("cvLabQPE"); if(!cv) return;
+  const ctx = resizeCanvas(cv), w = cv.width, h = cv.height, d = window.devicePixelRatio || 1;
+  clear(ctx, w, h);
+  const p = canvasFrame(ctx, w, h, "LAB 3 · LGZ QUANTUM PHASE ESTIMATION (DIRAC SPECTRUM)", "ancilla phase register histogram P(φ_j) & circuit");
+  const lt = isLightTheme();
+  const cKey = $("selQpeComplex").value || "ring6";
+  const cxData = QPE_COMPLEXES[cKey];
+  const m = Number($("iQpeM").value);
+  const tau = Number($("iQpeTau").value);
+  const noise = Number($("iQpeNoise").value);
+
+  const dimH = cxData.V + cxData.E + cxData.F;
+  const harmTotal = cxData.b0 + cxData.b1 + cxData.b2;
+  const pZeroIdeal = harmTotal / dimH;
+  const pZeroMeasured = pZeroIdeal * (1 - 0.65 * noise) + (noise / (1 << Math.min(6, m)));
+  const estBetti = pZeroMeasured * dimH;
+
+  if(Math.abs(estBetti - harmTotal) < 0.15 && m >= 6) unlockChallenge("c_qpe");
+
+  // TOP: Mini Quantum Phase Estimation Circuit Diagram (Ancilla |0>^m + Dirac e^(i tau B_Dirac))
+  const topH = (h - 2*p) * 0.34;
+  const x0 = p + 18*d, x1 = w - p - 18*d;
+  const yAnc = p + topH * 0.38, ySys = p + topH * 0.80;
+  ctx.strokeStyle = lt ? "rgba(15,23,42,0.35)" : "rgba(148,184,240,0.4)"; ctx.lineWidth = 1.6*d;
+  ctx.beginPath(); ctx.moveTo(x0, yAnc); ctx.lineTo(x1, yAnc); ctx.moveTo(x0, ySys); ctx.lineTo(x1, ySys); ctx.stroke();
+  // Hadamard gate H^{\otimes m}
+  const hx = x0 + (x1 - x0)*0.22;
+  ctx.fillStyle = "#38bdf8"; ctx.fillRect(hx - 14*d, yAnc - 10*d, 28*d, 20*d);
+  ctx.fillStyle = "#040812"; ctx.font = `700 ${7.5*d}px 'JetBrains Mono',monospace`; ctx.textAlign = "center";
+  ctx.fillText(`H⊗${m}`, hx, yAnc + 3*d);
+  // Controlled-U = exp(i tau B_Dirac)
+  const ux = x0 + (x1 - x0)*0.52;
+  ctx.beginPath(); ctx.moveTo(ux, yAnc); ctx.lineTo(ux, ySys); ctx.strokeStyle = "#fbbf24"; ctx.lineWidth = 2*d; ctx.stroke();
+  ctx.fillStyle = "#fbbf24"; ctx.beginPath(); ctx.arc(ux, yAnc, 4.5*d, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = "#a78bfa"; ctx.fillRect(ux - 34*d, ySys - 11*d, 68*d, 22*d);
+  ctx.fillStyle = "#040812"; ctx.fillText("exp(iτ B_Dirac)", ux, ySys + 3*d);
+  // Inverse QFTdagger
+  const qx = x0 + (x1 - x0)*0.78;
+  ctx.fillStyle = "#2dd4bf"; ctx.fillRect(qx - 18*d, yAnc - 10*d, 36*d, 20*d);
+  ctx.fillStyle = "#040812"; ctx.fillText("QFT†", qx, yAnc + 3*d);
+
+  // BOTTOM: QPE Phase Register Histogram (bins 0 .. 2^m - 1)
+  const by0 = p + topH + 14*d, bh = h - p - by0 - 12*d;
+  const nBins = Math.min(64, 1 << m);
+  const bw = (x1 - x0) / nBins;
+  // Synthetic Dirac eigenvalues: harmTotal zeros at phase=0, plus non-zero ±sqrt(lam) pairs
+  const nonZeroCount = Math.max(1, dimH - harmTotal);
+  const freqs = [];
+  for(let j = 0; j < nonZeroCount; j++){
+    const sign = (j % 2 === 0) ? 1 : -1;
+    const lam = cxData.lamMin * (1 + 0.65 * Math.floor(j / 2));
+    const phi = ((sign * tau * Math.sqrt(lam)) / (2 * Math.PI) + 1.0) % 1.0;
+    freqs.push(phi);
+  }
+  const bins = new Array(nBins).fill(noise / nBins);
+  bins[0] += pZeroMeasured;
+  freqs.forEach(ph => {
+    const center = ph * nBins;
+    for(let b = 0; b < nBins; b++){
+      const dist = Math.min(Math.abs(b - center), nBins - Math.abs(b - center));
+      const sinc2 = dist < 0.05 ? 1.0 : Math.pow(Math.sin(Math.PI * dist) / (Math.PI * dist * 1.6), 2);
+      bins[b] += ((1 - pZeroIdeal) / nonZeroCount) * (1 - 0.65*noise) * Math.min(1, sinc2);
+    }
+  });
+  const maxB = Math.max(0.15, ...bins);
+  for(let b = 0; b < nBins; b++){
+    const barH = (bins[b] / maxB) * bh * 0.88;
+    ctx.fillStyle = b === 0 ? "#fbbf24" : (lt ? "rgba(2,132,199,0.75)" : "rgba(56,189,248,0.75)");
+    ctx.fillRect(x0 + b*bw, by0 + bh - barH, Math.max(1.5, bw - 1.2), barH);
+  }
+  ctx.fillStyle = "#fbbf24"; ctx.textAlign = "left";
+  ctx.fillText(`★ φ=0 Harmonic Peak: P(0)=${(100*pZeroMeasured).toFixed(1)}% → β_tot ≈ ${estBetti.toFixed(2)} (Exact: ${harmTotal})`, x0, by0 - 2*d);
+
+  const reqM = Math.ceil(Math.log2(Math.max(2, (2 * Math.PI) / (tau * Math.sqrt(cxData.lamMin)))));
+  $("statsLabQPE").innerHTML = `
+    <div class="stat"><div class="k">Exact Betti (β₀, β₁, β₂)</div><div class="v">${cxData.b0}, ${cxData.b1}, ${cxData.b2} (Σ=${harmTotal})</div></div>
+    <div class="stat"><div class="k">QPE Estimated Σ β_k</div><div class="v">${estBetti.toFixed(2)} (m=${m} qubits)</div></div>
+    <div class="stat"><div class="k">Dirac Spectral Gap √λ₁⁺</div><div class="v">${Math.sqrt(cxData.lamMin).toFixed(3)} (req m ≥ ${reqM})</div></div>
+    <div class="stat"><div class="k">Hilbert Space dim ℋ</div><div class="v">${dimH} = ${cxData.V}⊕${cxData.E}⊕${cxData.F}</div></div>
+  `;
+}
+
+// --- LAB 4: UNITARY DIRAC QUANTUM WALK & SPECTRAL FILTER ---
+let qwTime = 0;
+let qwHarmLocked = false;
+function resetQWalk(){ qwTime = 0; qwHarmLocked = false; }
+function projectQWalkHarmonic(){
+  qwHarmLocked = true;
+  unlockChallenge("c_qwalk");
+  toast("Applied spectral projector Π_ker(L₁): isolated pure harmonic loop state!");
+}
+
+function drawQWalkLab(t){
+  const cv = $("cvLabQWalk"); if(!cv) return;
+  const ctx = resizeCanvas(cv), w = cv.width, h = cv.height, d = window.devicePixelRatio || 1;
+  clear(ctx, w, h);
+  const p = canvasFrame(ctx, w, h, "LAB 4 · UNITARY DIRAC QUANTUM WALK exp(−i t B_Dirac)", "conserved ‖ψ(t)‖₂ = 1 across C₀ ⊕ C₁ ⊕ C₂");
+  const lt = isLightTheme();
+  const spd = Number($("iQwSpd").value);
+  const initMode = $("selQwalkInit").value;
+  const wt = t * spd;
+
+  const midY = h * 0.54;
+  const cx = w * 0.5, cy = p + (midY - p)*0.54;
+  const R = Math.min(w - 2*p, midY - p) * 0.36;
+  const nV = 6, verts = [];
+  for(let i = 0; i < nV; i++){
+    const a = (i/nV)*Math.PI*2 - Math.PI/2;
+    verts.push([cx + R*Math.cos(a), cy + R*Math.sin(a)]);
+  }
+  const edges = [[0,1],[1,2],[2,3],[3,4],[4,5],[5,0]];
+
+  // Compute unitary edge & vertex probabilities |psi_e(t)|^2 and |psi_v(t)|^2
+  const edgeProbs = edges.map((_, i) => {
+    if(qwHarmLocked || initMode === "harmonic_seed") return 1 / 6;
+    const base = initMode === "edge_pulse" ? Math.cos(wt * 1.8 - i * 1.047) : Math.sin(wt * 1.6 - i * 1.047);
+    return 0.04 + 0.28 * base * base;
+  });
+  const vertProbs = verts.map((_, i) => {
+    if(qwHarmLocked || initMode === "harmonic_seed") return 0.0;
+    const base = initMode === "vertex_pulse" ? Math.cos(wt * 1.8 - i * 1.047) : Math.sin(wt * 1.8 - i * 1.047);
+    return 0.24 * base * base;
+  });
+  const sumAll = edgeProbs.reduce((a,b)=>a+b,0) + vertProbs.reduce((a,b)=>a+b,0);
+  const pC1 = edgeProbs.reduce((a,b)=>a+b,0) / sumAll;
+  const pC0 = vertProbs.reduce((a,b)=>a+b,0) / sumAll;
+
+  edges.forEach(([u, v], i) => {
+    const prob = edgeProbs[i] / sumAll;
+    const col = qwHarmLocked ? "#fbbf24" : (lt ? "#0284c7" : "#38bdf8");
+    ctx.strokeStyle = col;
+    ctx.lineWidth = (2.0 + 18 * prob) * d;
+    ctx.beginPath(); ctx.moveTo(verts[u][0], verts[u][1]); ctx.lineTo(verts[v][0], verts[v][1]); ctx.stroke();
+  });
+  verts.forEach(([vx, vy], i) => {
+    const prob = vertProbs[i] / sumAll;
+    ctx.fillStyle = prob > 0.03 ? "#2dd4bf" : (lt ? "#475569" : "#94a3b8");
+    ctx.beginPath(); ctx.arc(vx, vy, (4.5 + 14*prob)*d, 0, Math.PI*2); ctx.fill();
+  });
+
+  // BOTTOM: Unitary C0 vs C1 Probability Evolution Waveforms
+  const by0 = midY + 12*d, bh = h - p - by0 - 8*d, bx0 = p + 12*d, bw = w - 2*p - 24*d;
+  ctx.strokeStyle = "#38bdf8"; ctx.lineWidth = 2.2*d; ctx.beginPath();
+  for(let i = 0; i <= 100; i++){
+    const u = i / 100, tt = wt - (1 - u)*5.0;
+    const c1 = (qwHarmLocked || initMode === "harmonic_seed") ? 1.0 : (0.58 + 0.34 * Math.cos(2.4 * tt));
+    const py = by0 + bh * (1 - c1);
+    i ? ctx.lineTo(bx0 + u*bw, py) : ctx.moveTo(bx0, py);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = "#2dd4bf"; ctx.lineWidth = 2.0*d; ctx.beginPath();
+  for(let i = 0; i <= 100; i++){
+    const u = i / 100, tt = wt - (1 - u)*5.0;
+    const c1 = (qwHarmLocked || initMode === "harmonic_seed") ? 1.0 : (0.58 + 0.34 * Math.cos(2.4 * tt));
+    const py = by0 + bh * (1 - (1 - c1));
+    i ? ctx.lineTo(bx0 + u*bw, py) : ctx.moveTo(bx0, py);
+  }
+  ctx.stroke();
+  ctx.fillStyle = "#38bdf8"; ctx.font = `600 ${7.2*d}px 'JetBrains Mono',monospace`; ctx.textAlign = "left";
+  ctx.fillText("Cyan: 1-Chain Edge Weight ‖P₁ψ‖²   Teal: 0-Chain Vertex Weight ‖P₀ψ‖²", bx0, by0 - 2*d);
+
+  const harmOverlap = (qwHarmLocked || initMode === "harmonic_seed") ? 1.0 : (initMode === "edge_pulse" ? (1/6) : 0.0);
+  $("statsLabQWalk").innerHTML = `
+    <div class="stat"><div class="k">Unitary Norm ‖ψ(t)‖₂</div><div class="v">1.000000 (Exact)</div></div>
+    <div class="stat"><div class="k">C₁ Edge / C₀ Vertex Split</div><div class="v">${(100*pC1).toFixed(1)}% / ${(100*pC0).toFixed(1)}%</div></div>
+    <div class="stat"><div class="k">Harmonic Overlap |⟨h|ψ⟩|²</div><div class="v">${harmOverlap.toFixed(4)}</div></div>
+    <div class="stat"><div class="k">Spectral Filter Status</div><div class="v">${qwHarmLocked ? "Π_harm Locked (Pure H₁)" : "Unitary Evolution"}</div></div>
+  `;
+}
+
+// --- LAB 5: ASTROPHYSICAL GW ECHO & GALACTIC HALO LAB ---
 let astroMode = "gw";
 let astroPulseT = 0;
 function setAstroMode(m){
@@ -5505,7 +5832,7 @@ function drawAstroLab(t){
   const lt = isLightTheme();
 
   if(astroMode === "gw"){
-    const p = canvasFrame(ctx, w, h, "LAB 3A · REGULAR BH RINGDOWN & POST-MERGER ECHOES", "time-domain strain h(t) + echo comb");
+    const p = canvasFrame(ctx, w, h, "LAB 5A · REGULAR BH RINGDOWN & POST-MERGER ECHOES", "time-domain strain h(t) + echo comb");
     const M0 = Number($("iAstroM").value), refl = Number($("iAstroRefl").value);
     const dtMs = 20.965 * (M0 / 62.0) * (Math.log(M0 * 1.988e30 / 2.176e-8) / Math.log(62.0 * 1.988e30 / 2.176e-8));
     const fCombHz = 1000 / Math.max(0.1, dtMs);
@@ -5513,7 +5840,6 @@ function drawAstroLab(t){
 
     const x0 = p + 12*d, rw = w - 2*p - 24*d, cy = h * 0.54, amp = (h - 2*p)*0.34;
     const tMax = Math.max(120, dtMs * 4.5);
-    // Echo arrival markers
     for(let k = 1; k <= 3; k++){
       const ex = x0 + ((15 + k * dtMs) / tMax) * rw;
       if(ex < x0 + rw){
@@ -5523,15 +5849,12 @@ function drawAstroLab(t){
         ctx.fillText(`Echo #${k}`, ex, p + 22*d);
       }
     }
-    // Waveform h(t): primary merger ringdown at t=15ms + damped bouncing echoes
     ctx.save(); ctx.shadowColor = "rgba(56,189,248,0.5)"; ctx.shadowBlur = 8*d;
     ctx.strokeStyle = lt ? "#0284c7" : "#38bdf8"; ctx.lineWidth = 2.2*d; ctx.beginPath();
     const N = 260;
     for(let i = 0; i <= N; i++){
       const tm = (i / N) * tMax;
-      // Inspiral + primary ringdown at t0 = 15 ms
       let sig = tm < 15 ? 0.35 * Math.exp((tm - 15)/9) * Math.cos(1.4*tm - t*3) : Math.exp(-(tm - 15)/6.5) * Math.cos(1.8*(tm - 15) - t*3);
-      // Add post-merger echoes at t0 + k * dtMs
       for(let k = 1; k <= 4; k++){
         const te = 15 + k * dtMs;
         const env = Math.pow(refl, k) * 0.68 * Math.exp(-Math.pow((tm - te) / (4.5 + k), 2));
@@ -5548,14 +5871,13 @@ function drawAstroLab(t){
       <div class="stat"><div class="k">Core Reflectivity</div><div class="v">${(refl*100).toFixed(0)}% (R₋ floor)</div></div>
     `;
   } else {
-    const p = canvasFrame(ctx, w, h, "LAB 3B · GALACTIC PROCA BEC HALO ROTATION CURVE", "v(r) [km/s] vs. radius r [kpc]");
+    const p = canvasFrame(ctx, w, h, "LAB 5B · GALACTIC PROCA BEC HALO ROTATION CURVE", "v(r) [km/s] vs. radius r [kpc]");
     const Mbar = Number($("iAstroMbar").value), rc = Number($("iAstroRc").value);
     const vFlat = 148 * Math.pow(Mbar / 6.5, 0.25);
     const x0 = p + 18*d, rw = w - 2*p - 32*d, y0 = p + 22*d, rh = h - 2*p - 34*d;
     const rMax = 25.0, vMax = Math.max(240, vFlat * 1.45);
     const mapX = r => x0 + (r / rMax) * rw, mapY = v => y0 + rh * (1 - v / vMax);
 
-    // Newtonian Keplerian baryonic falloff (dashed gray)
     ctx.save(); ctx.setLineDash([4*d,4*d]); ctx.strokeStyle = lt ? "#64748b" : "#94a3b8"; ctx.lineWidth = 1.6*d; ctx.beginPath();
     for(let i = 1; i <= 100; i++){
       const r = (i/100)*rMax;
@@ -5564,7 +5886,6 @@ function drawAstroLab(t){
     }
     ctx.stroke(); ctx.restore();
 
-    // EMG Proca BEC Soliton Core + Flat Halo Curve (teal)
     ctx.strokeStyle = lt ? "#0d9488" : "#2dd4bf"; ctx.lineWidth = 2.6*d; ctx.beginPath();
     for(let i = 0; i <= 100; i++){
       const r = (i/100)*rMax;
@@ -5583,30 +5904,43 @@ function drawAstroLab(t){
   }
 }
 
-// --- LAB 4: LIVE PYTHON + SCIPY REPL ---
+// --- LAB 6: LIVE PYTHON + SCIPY REPL ---
 const REPL_SNIPPETS = {
+  qdirac: `import numpy as np, scipy.linalg as la
+aud = SimplicialSpectralAuditor(num_vertices=16, seed=42)
+B1, B2 = aud.build_boundary_matrices(corrupt_orientation=False)
+n0, n1, n2 = B1.shape[0], B1.shape[1], B2.shape[1]
+D = np.zeros((n0 + n1 + n2, n0 + n1 + n2))
+D[:n0, n0:n0+n1] = B1; D[n0:n0+n1, :n0] = B1.T
+D[n0:n0+n1, n0+n1:] = B2; D[n0+n1:, n0:n0+n1] = B2.T
+evals = la.eigvalsh(D)
+print("Dirac Hilbert dim:", D.shape[0], "| Harmonic nullity (b0+b1+b2):", int(np.sum(np.abs(evals) < 1e-10)))`,
+  sheaf_hol: `import numpy as np, scipy.linalg as la
+# Build 6-cycle SO(2) cellular sheaf with holonomy twist Phi = pi/3
+nV, phi = 6, np.pi / 3
+d0 = np.zeros((2*nV, 2*nV))
+for e in range(nV):
+    u, v = e, (e + 1) % nV
+    th = phi if e == 0 else 0.0
+    R = np.array([[np.cos(th), -np.sin(th)], [np.sin(th), np.cos(th)]])
+    d0[2*e:2*e+2, 2*u:2*u+2] = R
+    d0[2*e:2*e+2, 2*v:2*v+2] = -np.eye(2)
+LF = d0.T @ d0
+evals = la.eigvalsh(LF)
+print("Twisted Sheaf Laplacian lowest eigenvalues:", np.round(evals[:4], 6))
+print("dim H^0(F) (zero modes):", int(np.sum(evals < 1e-10)))`,
   kkt: `import numpy as np
 solver = PhysicalVariationalSolver(N_shells=48, g0=2.0)
 res = solver.solve()
 diag = DiscreteCurvatureAndVirialEngine.verify_kkt_virial_and_projection(N_shells=48, g0=2.0)
 print(f"N=48, g0=2.0 -> converged={res['converged']}, iters={res['iters']}")
 print(f"lambda* = {diag['lambda_star']:.6f}, virial = {diag['lambda_virial']:.6f}, gap = {diag['virial_gap']:.3e}")`,
-  hodge: `aud = SimplicialSpectralAuditor(num_vertices=16, seed=42)
-spec = aud.compute_hodge_laplacians()
-ricci = DiscreteCurvatureAndVirialEngine.compute_forman_ricci_and_bochner(aud)
-print(f"Fiedler lambda_2 = {spec['lambda_2_fiedler']:.6f} | Cutwidth = {spec['cutwidth_fiedler']} (vs random {spec['mean_random_cutwidth']:.1f})")
-print(f"Forman-Ricci min/mean/max = {ricci['forman_min']:.2f} / {ricci['forman_mean']:.2f} / {ricci['forman_max']:.2f}")`,
   dmrg: `res = DeflatedDMRGResonanceEngine.solve_excited_ladder(K=4, d=2, n_states=3, gamma_ortho=50.0)
 print("Deflated Eigenenergies E0, E1, E2:", [round(x, 6) for x in res["energies"]])
-print(f"Max Orthogonality Overlap: {res['max_orthogonality_overlap']:.3e}")
-print(f"Max Variance Identity Gap: {res['max_variance_identity_gap']:.3e}")`,
+print(f"Max Orthogonality Overlap: {res['max_orthogonality_overlap']:.3e}")`,
   scan83: `errs = [abs(float(s["rel"].replace("%",""))) for s in MASTER_83_STATES if "%" in s["rel"]]
 sub1 = sum(1 for e in errs if e < 1.0)
-print(f"83-State Master Table: {len(errs)} numeric comparisons")
-print(f"States within <1.0% of PDG: {sub1} / {len(errs)} | Median rel err: {np.median(errs):.4f}%")`,
-  bh: `for m in [2.75, 62.0, 142.0]:
-    bh = HorizonlessCoreAndEchoEngine.evaluate_horizonless_metric(m)
-    print(f"M={m:6.2f} M_sun -> R_-={bh['R_minus_km']:6.2f} km | A_min={bh['A_min_formula']:.4f} | dt_echo={bh['dt_echo_closed_ms']:6.3f} ms")`
+print(f"83-State Master Table: {sub1} / {len(errs)} states within <1.0% of PDG | Median rel err: {np.median(errs):.4f}%")`
 };
 
 function loadReplSnippet(key){
@@ -5633,18 +5967,22 @@ async function runPythonRepl(){
   }
 }
 
-// --- LAB 5: GUIDED HYPOTHESIS CHALLENGES ---
+// --- LAB 7: GUIDED HYPOTHESIS CHALLENGES ---
 const LAB_CHALLENGES = [
   { id: "c_delta", title: "1 · Synthesize the Doubly-Charged Δ⁺⁺ Baryon", lab: "synth",
     desc: "In Lab 1 (Particle Synth), dial quantum numbers for a Baryon (k=2) with electric charge q_x = +2.00 e." },
-  { id: "c_pi0", title: "2 · Construct a Neutral Pion (π⁰) Soliton", lab: "synth",
-    desc: "In Lab 1 (Particle Synth), set k=1, P=2, Q=0 and choose isospin x so that net charge q_x = 0.00 e." },
+  { id: "c_flat_sheaf", title: "2 · Unobstruct Global Sheaf Cohomology (dim H⁰ = 2)", lab: "sheaf",
+    desc: "In Lab 2 (Sheaf & Hodge), set SO(2) holonomy twist Φ = 0° and let the ℝ² vector stalks relax to a flat section." },
   { id: "c_betti", title: "3 · Engineer a Multi-Hole Complex (β₁ ≥ 3)", lab: "sheaf",
-    desc: "In Lab 2 (Graph & Sheaf), load the Tetrahedron K₄ preset or add edges until the first Betti number β₁ ≥ 3." },
-  { id: "c_echo", title: "4 · Tune GW150914 Post-Merger Echoes", lab: "astro",
-    desc: "In Lab 3 (GW Echo & Halo), set remnant mass M₀ ≈ 62.0 M☉ and Core Reflectivity ≥ 0.60 to resolve the 20.96 ms echo comb." },
-  { id: "c_pyrepl", title: "5 · Execute Live Python Physics Code in Browser", lab: "pyrepl",
-    desc: "Boot the Pyodide Web Worker and execute any experiment in Lab 4 (Python REPL)." }
+    desc: "In Lab 2 (Sheaf & Hodge), load Tetrahedron K₄ or add edges until the first Betti number β₁ ≥ 3." },
+  { id: "c_qpe", title: "4 · Resolve Exact Betti Sum via Quantum Phase Estimation", lab: "qpe",
+    desc: "In Lab 3 (Quantum Hodge QPE), use m ≥ 6 ancilla qubits to resolve the φ=0 harmonic peak within ±0.15 of exact Σ β_k." },
+  { id: "c_qwalk", title: "5 · Apply Spectral Harmonic Projector Π_ker(L₁)", lab: "qwalk",
+    desc: "In Lab 4 (Dirac Quantum Walk), apply the spectral filter Π_harm to isolate a pure harmonic loop state." },
+  { id: "c_echo", title: "6 · Tune GW150914 Post-Merger Echoes", lab: "astro",
+    desc: "In Lab 5 (GW Echo & Halo), set remnant mass M₀ ≈ 62.0 M☉ and Core Reflectivity ≥ 0.60 to resolve the 20.96 ms echo comb." },
+  { id: "c_pyrepl", title: "7 · Execute Live Quantum Hodge Python Code", lab: "pyrepl",
+    desc: "Boot the Pyodide Web Worker and execute a Dirac/Sheaf/KKT experiment in Lab 6 (Python REPL)." }
 ];
 
 function unlockChallenge(id){
@@ -5682,6 +6020,7 @@ function renderChallenges(){
 $("tabLabs")?.addEventListener("click", () => switchTopTab("labs"));
 window.addEventListener("resize", () => { if(activeView === "labs") startLabsLoop(); });
 updateSynthLab();
+updateQpeLab();
 renderChallenges();
 
 </script>

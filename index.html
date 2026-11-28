@@ -834,8 +834,6 @@ self.fetch = async (input, init) => {
   return origFetch(req);
 };
 
-const activeIndexUrl = await ensurePyodideLoaded();
-
 let pyodide = null;
 
 function b64ToUtf8(b64){
@@ -883,6 +881,7 @@ self.onmessage = async (ev) => {
   if(msg.type === "boot"){
     try{
       self.postMessage({type:"progress", status:"loading Pyodide...", log:"Loading Pyodide runtime in Web Worker (Cache API enabled)...", cls:"info"});
+      const activeIndexUrl = await ensurePyodideLoaded();
       pyodide = await loadPyodide({
         indexURL: activeIndexUrl,
         stdout: s => self.postMessage({type:"stdout", text: s + "\n"}),

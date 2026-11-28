@@ -19,6 +19,13 @@
 <title>EMG Metronic Lab — 7-Tier Audit · Live Trajectories · Full Harness</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 :root {
   --bg:#04060b; --panel:rgba(10,14,24,0.92); --line:rgba(175,205,255,0.15);
@@ -318,23 +325,36 @@ input[type=text],input[type=number],select{
   #logTable{min-width:720px}
 }
 
-/* 3D View Stage */
+/* Full 3D WebGL Stage + Bottom-Left Floating Telemetry Dock */
 #stage3dWrap{
-  position:fixed;inset:0 340px 0 0;display:none;flex-direction:column;
+  position:fixed;inset:0 340px 0 0;display:none;
   background:radial-gradient(circle at 50% 45%,#0b1224 0%,#04060b 78%);z-index:12;
 }
-#stage3dWrap.open{display:flex}
-#stage3d{flex:1;width:100%;height:100%;cursor:grab;touch-action:none}
+#stage3dWrap.open{display:block}
+#stage3d{position:absolute;inset:0;width:100%;height:100%;cursor:grab;touch-action:none;overflow:hidden}
 #stage3d:active{cursor:grabbing}
-#mode3dPill{display:none}
+#stage3d canvas{display:block;width:100%;height:100%}
+#mode3dPill{display:none;max-width:min(360px,42vw)}
 #mode3dPill.show{display:flex}
-#mode3dSel{padding:3px 7px;font-size:8.6px;background:#0c121f;border:1px solid var(--line);border-radius:7px;color:#eef2ff}
-#stage3dHudOverlay{
-  position:absolute;left:14px;bottom:14px;z-index:14;pointer-events:none;
-  background:rgba(10,14,24,.88);border:1px solid var(--line);border-radius:10px;
-  padding:7px 10px;font-size:8.5px;color:#cbd5e1;backdrop-filter:blur(10px);
+#mode3dSel{width:100%;padding:3px 7px;font-size:8.6px;background:#0c121f;border:1px solid var(--line);border-radius:7px;color:#eef2ff}
+
+#dock3dWrap{
+  position:fixed;left:12px;bottom:12px;z-index:14;width:304px;
+  background:var(--panel);border:1px solid var(--line);border-radius:13px;
+  padding:8px 10px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  box-shadow:0 10px 36px rgba(0,0,0,.82);display:none;
 }
-#stage3dHudOverlay b{color:var(--teal)}
+#dock3dWrap.show{display:block}
+#dock3dWrap.min #dock3dBody{display:none}
+.dhdr{display:flex;justify-content:space-between;align-items:center;font-size:8.2px;letter-spacing:.11em;text-transform:uppercase;color:var(--amber);cursor:pointer}
+#dock3dChartBox{height:142px;margin-top:6px;position:relative}
+.dfoot{display:flex;justify-content:space-between;align-items:center;margin-top:4px;font-size:8px;color:var(--mut)}
+
+.zbar-wrap{display:flex;height:6px;border-radius:4px;overflow:hidden;background:#0c1322;margin:3px 0}
+button.pulse-btn{border-color:var(--amber);color:var(--amber);background:rgba(251,191,36,.12);font-weight:700}
+button.pulse-btn:hover{background:rgba(251,191,36,.24);color:#fff}
+button.tool{color:var(--mut)}
+button.tool.on{color:#fff;border-color:var(--amber);background:rgba(251,191,36,.15)}
 
 /* Dual-Tab Audit Modal (Instant JS + Python Worker) */
 #auditJsBody{flex:1;overflow:auto;padding:12px 14px;font-size:9.8px;line-height:1.5;display:none}
@@ -346,7 +366,8 @@ input[type=text],input[type=number],select{
 table.p21{width:100%;border-collapse:collapse;font-size:8.8px;margin-top:6px}
 table.p21 th,table.p21 td{padding:3px 5px;text-align:right;border-bottom:1px solid rgba(255,255,255,.06)}
 table.p21 th:first-child,table.p21 td:first-child{text-align:left}
-table.p21 tr.p-row:hover{background:rgba(56,189,248,.14)}
+table.p21 tr.p-row{cursor:pointer}
+table.p21 tr.p-row:hover{background:rgba(56,189,248,.16)}
 
 /* Mobile Drawer Backdrop, Close Button & Safe Areas */
 .hud-hdr{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
@@ -356,16 +377,19 @@ table.p21 tr.p-row:hover{background:rgba(56,189,248,.14)}
   background:rgba(0,0,0,.55);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
 }
 #mobileBackdrop.show{display:block}
+.hidden{display:none!important}
 @media(max-width:900px){
   #stage3dWrap{inset:0}
   #mobileCloseHud{display:inline-block}
   #hud{
-    top:0;right:0;bottom:0;left:auto;width:min(94vw,350px);border-radius:18px 0 0 18px;
+    top:0;right:0;bottom:0;left:auto;width:min(94vw,355px);border-radius:18px 0 0 18px;
     padding-top:max(14px,env(safe-area-inset-top));
     padding-bottom:max(14px,env(safe-area-inset-bottom));
   }
   #topBar{top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left))}
   #mobileHudBtn{top:max(8px,env(safe-area-inset-top));right:max(8px,env(safe-area-inset-right))}
+  #dock3dWrap{left:50%;transform:translateX(-50%);bottom:max(10px,env(safe-area-inset-bottom));width:min(94vw,330px)}
+  #dock3dWrap.min{width:auto;min-width:170px}
   body.hud-open{overflow:hidden}
 }
 </style>
@@ -373,16 +397,21 @@ table.p21 tr.p-row:hover{background:rgba(56,189,248,.14)}
 <body>
 <div id="topBar">
   <div class="glass-pill">
-    <button class="eng-btn on" id="tabViz">Visual</button>
-    <button class="eng-btn" id="tab3D">3D View</button>
+    <button class="eng-btn on" id="tabViz">2D Panels (4)</button>
+    <button class="eng-btn" id="tab3D">3D WebGL (9)</button>
     <button class="eng-btn" id="tabLog">Log</button>
   </div>
   <div class="glass-pill" id="mode3dPill">
-    <select id="mode3dSel" title="3D View Regime (driven by live DATA & frame scrubber)">
-      <option value="hodge">3D · 16V Hodge Complex (Panel A)</option>
-      <option value="kkt">3D · KKT Soliton Funnel (Panel B)</option>
-      <option value="peps">3D · Tetrahedral Sheaf-PEPS (Panel D)</option>
-      <option value="soliton">3D · 4-Zone Hadronic Soliton (21 States)</option>
+    <select id="mode3dSel" title="Select 3D WebGL Regime (Keys 1–9)">
+      <option value="d">1 · Charged Hadronic Soliton &amp; (P,Q) Knot (d)</option>
+      <option value="c">2 · Neutral 4-Zone Hadronic Soliton (c)</option>
+      <option value="b">3 · Massless Photon (l=0) &amp; UV Cutoff (b)</option>
+      <option value="a">4 · Hayward Regular BH, Shadow &amp; Echoes (a)</option>
+      <option value="s">5 · KKT-Newton Soliton Funnel φ(r) (s)</option>
+      <option value="h">6 · 16-Vertex Hodge Complex &amp; Fiedler Snake (h)</option>
+      <option value="k">7 · Kontrabarie RF Cavity &amp; Dim-8 EFT (k)</option>
+      <option value="m">8 · Galactic Proca BEC Halo &amp; Rotation (m)</option>
+      <option value="g">9 · 3D Tetrahedral Sheaf-PEPS &amp; Radial MERA (g)</option>
     </select>
   </div>
   <div class="glass-pill" title="Scrub KKT ladder &amp; PEPS evolution frames (Space = play/pause, ←/→ = step)">
@@ -396,9 +425,19 @@ table.p21 tr.p-row:hover{background:rgba(56,189,248,.14)}
   <div class="glass-pill" id="toast"></div>
 </div>
 <div id="mobileBackdrop" onclick="toggleMobileHud(false)"></div>
-<div id="stage3dWrap">
-  <div id="stage3d"></div>
-  <div id="stage3dHudOverlay"><b>3D Interactive Lab:</b> Drag to orbit · Scroll/Pinch to zoom · Scrub frames above</div>
+<div id="stage3dWrap"><div id="stage3d"></div></div>
+<div id="dock3dWrap">
+  <div class="dhdr" id="dock3dHdr" title="Tap to Minimize / Expand">
+    <span id="dock3dTitle">3D Analytics · Cat C · Charged Soliton</span>
+    <span id="dock3dChevron">&#9660;</span>
+  </div>
+  <div id="dock3dBody">
+    <div id="dock3dChartBox"><canvas id="chart3d"></canvas></div>
+    <div class="dfoot">
+      <span id="dock3dSub">Drag orbits · Pinch/Scroll zooms · Double-tap pulses</span>
+      <span>FPS:<b id="fps3dEl" style="color:#fff">60</b></span>
+    </div>
+  </div>
 </div>
 <button id="mobileHudBtn" type="button">HUD</button>
 
@@ -433,7 +472,7 @@ table.p21 tr.p-row:hover{background:rgba(56,189,248,.14)}
 
 <aside id="hud">
   <div class="hud-hdr">
-    <h1>EMG Metronic Lab<small>7-Tier Audit · Web Worker · Full Harness</small></h1>
+    <h1>EMG Metronic Lab<small>7-Tier Audit · 2D Panels · 3D WebGL (9)</small></h1>
     <button id="mobileCloseHud" type="button" onclick="toggleMobileHud(false)">&#10005;</button>
   </div>
   <div class="help">Non-blocking Pyodide + SciPy Web Worker with frame scrubbing, hover telemetry, and provenance export.</div>
@@ -463,6 +502,92 @@ table.p21 tr.p-row:hover{background:rgba(56,189,248,.14)}
   </div>
   <button class="audit-btn" id="btnAudit" disabled style="width:100%">Open 7-Tier Audit Modal</button>
   <button class="danger" id="btnFullAudit" disabled style="width:100%">Run full audit (slow)</button>
+
+  <!-- 3D WEBGL CONTEXTUAL CONTROLS (Visible in 3D View) -->
+  <div id="hud3dSection" class="hidden" style="display:flex;flex-direction:column;gap:6px">
+    <h2>3D WebGL Controls &amp; Camera</h2>
+    <div class="row">
+      <button type="button" class="pulse-btn" style="flex:1.5" onclick="trigger3DPulse()">&#9889; Excite Pulse</button>
+      <button type="button" onclick="setCamPreset('iso')" style="flex:0.7">Iso</button>
+      <button type="button" onclick="setCamPreset('top')" style="flex:0.7">Top</button>
+      <button type="button" onclick="setCamPreset('core')" style="flex:0.7">Core</button>
+    </div>
+    <div id="mode3dNote" class="note-box"></div>
+
+    <!-- 3D Soliton Particle & Knot Controls -->
+    <div id="ctl3dSoliton" style="display:flex;flex-direction:column;gap:5px">
+      <h2>21 Canonical States &amp; Knot Winding</h2>
+      <select id="p3dSel" onchange="select3DParticle(this.value)"></select>
+      <div class="grid3">
+        <button type="button" onclick="select3DParticle('p')">p&#8314;</button>
+        <button type="button" onclick="select3DParticle('n')">n&#8304;</button>
+        <button type="button" onclick="select3DParticle('pi+')">π&#8314;</button>
+        <button type="button" onclick="select3DParticle('mu-')">&mu;&#8315;</button>
+        <button type="button" onclick="select3DParticle('Lambda')">&Lambda;&#8304;</button>
+        <button type="button" onclick="select3DParticle('Omega-')">&Omega;&#8315;</button>
+      </div>
+      <div class="grid2">
+        <div class="ctl"><label>Poloidal P <output id="vKnotP">1</output></label><input type="range" id="sKnotP" min="1" max="5" step="1" value="1" oninput="updateKnot3D()"></div>
+        <div class="ctl"><label>Toroidal Q <output id="vKnotQ">3</output></label><input type="range" id="sKnotQ" min="1" max="7" step="1" value="3" oninput="updateKnot3D()"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">
+        <button type="button" class="tool on" data-l3="knot" onclick="toggleLayer3D('knot',this)">Knot</button>
+        <button type="button" class="tool on" data-l3="flux" onclick="toggleLayer3D('flux',this)">Flux</button>
+        <button type="button" class="tool on" data-l3="quarks" onclick="toggleLayer3D('quarks',this)">K&#8323;</button>
+        <button type="button" class="tool on" data-l3="shells" onclick="toggleLayer3D('shells',this)">Shells</button>
+      </div>
+      <div class="metric"><span id="hudZones3d">Zones (24,31,34,15)</span><b style="color:var(--teal)" id="hudZonePct3d">88.8%|10.6%|0.6%</b></div>
+      <div class="zbar-wrap">
+        <div id="zb1" style="width:88.8%;background:#f43f5e"></div>
+        <div id="zb2" style="width:10.6%;background:#38bdf8"></div>
+        <div id="zb3" style="width:0.55%;background:#fbbf24"></div>
+        <div id="zb4" style="width:0.05%;background:#a78bfa"></div>
+      </div>
+    </div>
+
+    <!-- 3D BH Controls -->
+    <div id="ctl3dBH" class="hidden" style="display:flex;flex-direction:column;gap:5px">
+      <h2>Hayward Regular Core &amp; Echoes</h2>
+      <div class="ctl"><label>Remnant Mass M&#8320; [M&#9737;] <output id="vBHMass">62.0</output></label>
+        <input type="range" id="sBHMass" min="2.5" max="150" step="0.5" value="62" oninput="updateBH3D(this.value)"></div>
+      <div class="grid3">
+        <button type="button" onclick="setBH3D(2.75)">GW170817</button>
+        <button type="button" onclick="setBH3D(62.0)">GW150914</button>
+        <button type="button" onclick="setBH3D(142.0)">GW190521</button>
+      </div>
+    </div>
+
+    <!-- 3D Kontrabarie Controls -->
+    <div id="ctl3dKontra" class="hidden" style="display:flex;flex-direction:column;gap:5px">
+      <h2>Kontrabarie Cavity &amp; Dim-8 EFT</h2>
+      <div class="ctl"><label>Cryo Temp T (&le;20 K) <output id="vKTemp">4.0 K</output></label><input type="range" id="sKTemp" min="1.5" max="45" step="0.5" value="4.0" oninput="updateKontra3D()"></div>
+      <div class="ctl"><label>Magnetic Flux B (&ge;15 T) <output id="vKMag">18.0 T</output></label><input type="range" id="sKMag" min="0" max="30" step="0.5" value="18.0" oninput="updateKontra3D()"></div>
+      <div class="ctl"><label>RF Drive &omega; [GHz] <output id="vKFreq">1.0 GHz</output></label><input type="range" id="sKFreq" min="0" max="50" step="0.5" value="1.0" oninput="updateKontra3D()"></div>
+    </div>
+
+    <!-- 3D BEC Halo Controls -->
+    <div id="ctl3dHalo" class="hidden" style="display:flex;flex-direction:column;gap:5px">
+      <h2>Galactic Mesofield BEC Halo</h2>
+      <div class="ctl"><label>Baryonic Mass M_bar <output id="vHMass">6.5e10</output></label><input type="range" id="sHMass" min="5" max="150" value="65" oninput="updateHalo3D()"></div>
+      <div class="ctl"><label>Soliton Core r_c [kpc] <output id="vHRc">1.24</output></label><input type="range" id="sHRc" min="50" max="300" value="124" oninput="updateHalo3D()"></div>
+    </div>
+
+    <!-- 3D PEPS Controls -->
+    <div id="ctl3dPEPS" class="hidden" style="display:flex;flex-direction:column;gap:5px">
+      <h2>3D Tetrahedral Sheaf-PEPS &amp; MERA</h2>
+      <div class="ctl"><label>Bond Dimension &chi; <output id="vPEPSChi">6</output></label><input type="range" id="sPEPSChi" min="2" max="16" step="1" value="6" oninput="updatePEPS3D()"></div>
+    </div>
+
+    <h2>Shared 3D Dynamics</h2>
+    <div class="grid2">
+      <div class="ctl"><label>Opacity <output id="v3Op">28%</output></label><input type="range" id="s3Op" min="5" max="80" value="28" oninput="updateOp3D(this.value)"></div>
+      <div class="ctl"><label>Speed <output id="v3Spd">1.0x</output></label><input type="range" id="s3Spd" min="20" max="250" value="100" oninput="updateSpd3D(this.value)"></div>
+      <div class="ctl"><label>Wave k <output id="v3Kw">2.2</output></label><input type="range" id="s3Kw" min="5" max="50" value="22" oninput="phase3D.kWave=this.value/10;document.getElementById('v3Kw').textContent=phase3D.kWave.toFixed(1)"></div>
+      <div class="ctl"><label>Amp <output id="v3Amp">1.05</output></label><input type="range" id="s3Amp" min="10" max="200" value="105" oninput="phase3D.amp=this.value/100;document.getElementById('v3Amp').textContent=phase3D.amp.toFixed(2)"></div>
+    </div>
+    <div class="metric"><span>Active 3D Regime</span><b class="c" id="m3State">Proton (p⁺)</b></div>
+    <div class="metric"><span>Derived / DESY Output</span><b class="e" id="m3Mass">938.2517 MeV</b></div>
+  </div>
 
   <h2>Solver Parameters</h2>
   <div class="ctl">
@@ -1019,6 +1144,14 @@ $("btnExportJsonl").onclick = () => {
 };
 
 $("btnExportPng").onclick = () => {
+  if(activeView === "3d" && inited3D && composer){
+    composer.render();
+    ren3D.domElement.toBlob(blob => {
+      if(blob) downloadBlob(blob, `emg-3d-${mode3D}.png`);
+      toast(`Exported 3D snapshot (emg-3d-${mode3D}.png)`);
+    }, "image/png");
+    return;
+  }
   const ids = ["cvA", "cvB", "cvC", "cvD"];
   const titles = ["A · Fiedler Spectral Ordering", "B · KKT Field & Shape Proxy", "C · Production Chain", "D · Sheaf-PEPS Spectra"];
   const cw = 640, ch = 360, pad = 16, hdr = 28;
@@ -1381,7 +1514,8 @@ window.addEventListener("keydown", e=>{
 
 
 /* =====================================================================
-   PORTED MODULES: MOBILE DRAWER, INSTANT JS AUDIT (21 STATES), LIVE 3D VIEW
+   PORTED FULL 3D WEBGL LABORATORY (9 REGIMES + BLOOM + CHART.JS),
+   INSTANT JS 7-TIER AUDIT (21 STATES), & MOBILE DRAWER
    ===================================================================== */
 
 // 1. Mobile Drawer + Backdrop
@@ -1403,28 +1537,39 @@ const combJS = (n, k) => {
   return Math.round(r);
 };
 const CANONICAL_21 = [
-  { sym:"p", name:"Proton (p⁺)", eps:1, k:2, P:1, Q:1, kap:0, x:0, knotP:1, knotQ:3, ref: 938.25167338, zones:[24,31,34,15] },
-  { sym:"n", name:"Neutron (n⁰)", eps:1, k:2, P:1, Q:1, kap:0, x:1, knotP:1, knotQ:3, ref: 939.54540401, zones:[24,31,32,32] },
-  { sym:"e-", name:"Electron (e⁻)", eps:1, k:1, P:1, Q:1, kap:0, x:1, knotP:1, knotQ:2, ref: 0.51098822, zones:[1,1,1,1] },
-  { sym:"e0", name:"Leptoneutrino (e₀)", eps:1, k:1, P:1, Q:1, kap:0, x:0, knotP:1, knotQ:2, ref: 0.51615513, zones:[1,1,1,1] },
-  { sym:"mu-", name:"Muon (μ⁻)", eps:1, k:1, P:1, Q:1, kap:1, x:0, knotP:2, knotQ:3, ref: 105.65634128, zones:[14,9,13,7] },
-  { sym:"pi+", name:"Pion (π⁺)", eps:1, k:1, P:2, Q:0, kap:0, x:0, knotP:2, knotQ:1, ref: 139.56421834, zones:[15,12,4,4] },
-  { sym:"pi0", name:"Pion (π⁰)", eps:1, k:1, P:2, Q:0, kap:0, x:1, knotP:2, knotQ:1, ref: 134.95602561, zones:[15,6,8,5] },
-  { sym:"K+", name:"Kaon (K⁺)", eps:1, k:1, P:1, Q:0, kap:1, x:0, knotP:2, knotQ:5, ref: 493.69956168, zones:[20,29,32,19] },
-  { sym:"K0", name:"Kaon (K⁰)", eps:1, k:1, P:1, Q:0, kap:1, x:1, knotP:2, knotQ:5, ref: 497.70819066, zones:[21,8,7,3] },
-  { sym:"eta", name:"Eta (η⁰)", eps:1, k:1, P:0, Q:0, kap:0, x:0, knotP:3, knotQ:2, ref: 548.78369542, zones:[21,25,19,17] },
-  { sym:"Lambda", name:"Lambda (Λ⁰)", eps:1, k:2, P:0, Q:1, kap:0, x:0, knotP:2, knotQ:3, ref: 1115.56659651, zones:[25,34,34,4] },
-  { sym:"Sigma+", name:"Sigma (Σ⁺)", eps:1, k:2, P:2, Q:1, kap:0, x:0, knotP:2, knotQ:5, ref: 1189.33870868, zones:[26,24,22,24] },
-  { sym:"Sigma0", name:"Sigma (Σ⁰)", eps:1, k:2, P:2, Q:1, kap:0, x:1, knotP:2, knotQ:5, ref: 1192.44246612, zones:[26,24,20,13] },
-  { sym:"Sigma-", name:"Sigma (Σ⁻)", eps:1, k:2, P:2, Q:1, kap:0, x:2, knotP:2, knotQ:5, ref: 1197.26880554, zones:[26,25,29,10] },
-  { sym:"Xi0", name:"Xi (Ξ⁰)", eps:1, k:2, P:1, Q:1, kap:1, x:0, knotP:3, knotQ:4, ref: 1314.86293703, zones:[26,37,33,21] },
-  { sym:"Xi-", name:"Xi (Ξ⁻)", eps:1, k:2, P:1, Q:1, kap:1, x:1, knotP:3, knotQ:4, ref: 1321.25394409, zones:[26,38,17,16] },
-  { sym:"Omega-", name:"Omega (Ω⁻)", eps:1, k:2, P:0, Q:3, kap:0, x:0, knotP:3, knotQ:7, ref: 1672.12543330, zones:[28,35,32,30] },
-  { sym:"Delta++", name:"Delta (Δ⁺⁺)", eps:1, k:2, P:3, Q:3, kap:0, x:0, knotP:3, knotQ:5, ref: 1234.44239668, zones:[26,32,39,16] },
-  { sym:"Delta+", name:"Delta (Δ⁺)", eps:1, k:2, P:3, Q:3, kap:0, x:1, knotP:3, knotQ:5, ref: 1234.57307449, zones:[26,30,12,11] },
-  { sym:"Delta0", name:"Delta (Δ⁰)", eps:1, k:2, P:3, Q:3, kap:0, x:2, knotP:3, knotQ:5, ref: 1235.13841791, zones:[26,29,34,6] },
-  { sym:"Delta-", name:"Delta (Δ⁻)", eps:1, k:2, P:3, Q:3, kap:0, x:3, knotP:3, knotQ:5, ref: 1229.95869976, zones:[26,30,33,6] },
+  { sym:"p", name:"Proton (p⁺)", mode:"d", eps:1, k:2, P:1, Q:1, kap:0, x:0, knotP:1, knotQ:3, ref: 938.25167338, zones:[24,31,34,15] },
+  { sym:"n", name:"Neutron (n⁰)", mode:"c", eps:1, k:2, P:1, Q:1, kap:0, x:1, knotP:1, knotQ:3, ref: 939.54540401, zones:[24,31,32,32] },
+  { sym:"e-", name:"Electron (e⁻)", mode:"d", eps:1, k:1, P:1, Q:1, kap:0, x:1, knotP:1, knotQ:2, ref: 0.51098822, zones:[1,1,1,1] },
+  { sym:"e0", name:"Leptoneutrino (e₀)", mode:"c", eps:1, k:1, P:1, Q:1, kap:0, x:0, knotP:1, knotQ:2, ref: 0.51615513, zones:[1,1,1,1] },
+  { sym:"mu-", name:"Muon (μ⁻)", mode:"d", eps:1, k:1, P:1, Q:1, kap:1, x:0, knotP:2, knotQ:3, ref: 105.65634128, zones:[14,9,13,7] },
+  { sym:"pi+", name:"Pion (π⁺)", mode:"d", eps:1, k:1, P:2, Q:0, kap:0, x:0, knotP:2, knotQ:1, ref: 139.56421834, zones:[15,12,4,4] },
+  { sym:"pi0", name:"Pion (π⁰)", mode:"c", eps:1, k:1, P:2, Q:0, kap:0, x:1, knotP:2, knotQ:1, ref: 134.95602561, zones:[15,6,8,5] },
+  { sym:"K+", name:"Kaon (K⁺)", mode:"d", eps:1, k:1, P:1, Q:0, kap:1, x:0, knotP:2, knotQ:5, ref: 493.69956168, zones:[20,29,32,19] },
+  { sym:"K0", name:"Kaon (K⁰)", mode:"c", eps:1, k:1, P:1, Q:0, kap:1, x:1, knotP:2, knotQ:5, ref: 497.70819066, zones:[21,8,7,3] },
+  { sym:"eta", name:"Eta (η⁰)", mode:"c", eps:1, k:1, P:0, Q:0, kap:0, x:0, knotP:3, knotQ:2, ref: 548.78369542, zones:[21,25,19,17] },
+  { sym:"Lambda", name:"Lambda (Λ⁰)", mode:"c", eps:1, k:2, P:0, Q:1, kap:0, x:0, knotP:2, knotQ:3, ref: 1115.56659651, zones:[25,34,34,4] },
+  { sym:"Sigma+", name:"Sigma (Σ⁺)", mode:"d", eps:1, k:2, P:2, Q:1, kap:0, x:0, knotP:2, knotQ:5, ref: 1189.33870868, zones:[26,24,22,24] },
+  { sym:"Sigma0", name:"Sigma (Σ⁰)", mode:"c", eps:1, k:2, P:2, Q:1, kap:0, x:1, knotP:2, knotQ:5, ref: 1192.44246612, zones:[26,24,20,13] },
+  { sym:"Sigma-", name:"Sigma (Σ⁻)", mode:"d", eps:1, k:2, P:2, Q:1, kap:0, x:2, knotP:2, knotQ:5, ref: 1197.26880554, zones:[26,25,29,10] },
+  { sym:"Xi0", name:"Xi (Ξ⁰)", mode:"c", eps:1, k:2, P:1, Q:1, kap:1, x:0, knotP:3, knotQ:4, ref: 1314.86293703, zones:[26,37,33,21] },
+  { sym:"Xi-", name:"Xi (Ξ⁻)", mode:"d", eps:1, k:2, P:1, Q:1, kap:1, x:1, knotP:3, knotQ:4, ref: 1321.25394409, zones:[26,38,17,16] },
+  { sym:"Omega-", name:"Omega (Ω⁻)", mode:"d", eps:1, k:2, P:0, Q:3, kap:0, x:0, knotP:3, knotQ:7, ref: 1672.12543330, zones:[28,35,32,30] },
+  { sym:"Delta++", name:"Delta (Δ⁺⁺)", mode:"d", eps:1, k:2, P:3, Q:3, kap:0, x:0, knotP:3, knotQ:5, ref: 1234.44239668, zones:[26,32,39,16] },
+  { sym:"Delta+", name:"Delta (Δ⁺)", mode:"d", eps:1, k:2, P:3, Q:3, kap:0, x:1, knotP:3, knotQ:5, ref: 1234.57307449, zones:[26,30,12,11] },
+  { sym:"Delta0", name:"Delta (Δ⁰)", mode:"c", eps:1, k:2, P:3, Q:3, kap:0, x:2, knotP:3, knotQ:5, ref: 1235.13841791, zones:[26,29,34,6] },
+  { sym:"Delta-", name:"Delta (Δ⁻)", mode:"d", eps:1, k:2, P:3, Q:3, kap:0, x:3, knotP:3, knotQ:5, ref: 1229.95869976, zones:[26,30,33,6] },
 ];
+
+// Populate 3D particle dropdown
+{
+  const p3dSel = $("p3dSel");
+  CANONICAL_21.forEach(p => {
+    const o = document.createElement("option");
+    o.value = p.sym; o.textContent = `${p.name} [${p.ref.toFixed(2)} MeV]`;
+    if(p.sym === "p") o.selected = true;
+    p3dSel.appendChild(o);
+  });
+}
 
 function getMetroConstants(){
   const mode = $("metroMode")?.value || "MODERN_CODATA_BENCHMARK";
@@ -1432,7 +1577,8 @@ function getMetroConstants(){
   const H = mode === "DESY_1982_CALIBRATION" ? 6.626173e-34 : (mode === "HEIM_1989_CANONICAL" ? 6.6260755e-34 : 6.62607015e-34);
   const E = mode === "DESY_1982_CALIBRATION" ? 1.602188e-19 : (mode === "HEIM_1989_CANONICAL" ? 1.60217733e-19 : 1.602176634e-19);
   const C = 299792458.0, HBAR = H / TWO_PI_JS, KG_TO_MEV = (C * C) / (E * 1e6);
-  return { mode, G, H, E, C, HBAR, KG_TO_MEV };
+  const L_PL = Math.sqrt(HBAR * G / (C ** 3)), M_PL = Math.sqrt(HBAR * C / G), OMEGA_PL = C / L_PL;
+  return { mode, G, H, E, C, HBAR, KG_TO_MEV, L_PL, M_PL, OMEGA_PL };
 }
 
 function calcCanonicalStateJS(st){
@@ -1500,12 +1646,12 @@ function calcCanonicalStateJS(st){
 }
 
 function renderInstantJsAudit(){
-  const { mode, G, C, HBAR } = getMetroConstants();
+  const { mode, G, C, M_PL } = getMetroConstants();
   const rows = CANONICAL_21.map(st => ({ ...st, ...calcCanonicalStateJS(st) }));
   const aInv = rows[0].aInv;
   const aPpm = Math.abs(aInv - 137.035999177) / 137.035999177 * 1e6;
-  const mPl = Math.sqrt(HBAR * C / G), M62 = 62 * 1.98847e30;
-  const tEchoMs = ((3 * G * M62) / (4 * C**3)) * Math.log(M62 / mPl) * 1e3;
+  const M62 = 62 * 1.98847e30;
+  const tEchoMs = ((3 * G * M62) / (4 * C**3)) * Math.log(M62 / M_PL) * 1e3;
   const frB = DATA?.panel_b?.frames?.[Math.min(pbState.frame, (DATA?.panel_b?.frames?.length||1)-1)];
   const frD = DATA?.panel_d?.frames?.[Math.min(pbState.frame, (DATA?.panel_d?.frames?.length||1)-1)];
   const tag = ok => ok ? '<span class="pass">[PASS]</span>' : '<span class="fail">[CHECK]</span>';
@@ -1514,7 +1660,7 @@ function renderInstantJsAudit(){
   let p21 = `<table class="p21"><thead><tr><th>21 Canonical States (Click to Inspect in 3D)</th><th>DESY Ref</th><th>Calc [MeV]</th><th>Δ</th><th>Winding n</th><th>OK</th></tr></thead><tbody>`;
   for(const r of rows){
     const d = r.mev - r.ref, ok = Math.abs(d) < 0.05;
-    p21 += `<tr class="p-row" style="cursor:pointer" onclick="inspect3DSoliton('${r.sym}')"><td><b>${r.sym}</b> (q=${r.qx})</td><td>${r.ref.toFixed(4)}</td><td>${r.mev.toFixed(4)}</td><td>${d>=0?"+":""}${d.toFixed(4)}</td><td>(${r.n.join(",")})</td><td>${tag(ok)}</td></tr>`;
+    p21 += `<tr class="p-row" onclick="stageParticle3D('${r.sym}')"><td><b>${r.sym}</b> (q=${r.qx})</td><td>${r.ref.toFixed(4)}</td><td>${r.mev.toFixed(4)}</td><td>${d>=0?"+":""}${d.toFixed(4)}</td><td>(${r.n.join(",")})</td><td>${tag(ok)}</td></tr>`;
   }
   p21 += `</tbody></table>`;
 
@@ -1547,190 +1693,489 @@ $("btnAudit").onclick = () => { openAuditModal(); setAuditTab(lastAuditText ? "p
 $("metroMode").onchange = () => {
   toast("Metrology → " + $("metroMode").value);
   if($("auditModal").classList.contains("open")) renderInstantJsAudit();
+  if(inited3D && (mode3D === "d" || mode3D === "c")) select3DParticle(sym3D);
 };
 
-// 3. Live 3D View Driven by DATA, pbState.frame & 21 Canonical States
-let scene3D, cam3D, ren3D, ctrl3D, gHodge3D, gKKT3D, gPEPS3D, gSoliton3D, kktMesh3D, pepsEdges3D = [], solKnot3D = null, solSpheres3D = [];
-let mode3D = "hodge", activeSolSym = "p", inited3D = false, activeView = "viz";
+// 3. Full 3D WebGL Laboratory Engine (All 9 Regimes + UnrealBloomPass + Chart.js)
+let scene, camera, renderer, composer, orbit;
+let gCorpuscle, gPhoton, gBH, gKKT, gHodge, gKontra, gHalo, gPEPS;
+let zoneSpheres = [], knotMesh = null, quarkGrp, fluxCyls = [], streamPts, eFieldGrp, eSpines = [];
+let eRibG, bRibG, wSeg = 220, wLen = 8.0, bhGrid, R_MIN = 0.45, R_PS = 1.35, echoRing, kktGrid;
+let pTube, kCav, kThrust, becSphere, galPts, pepsNodes = [], pepsEdges = [], meraRings = [], coreLight;
+let camTrans = false, camGoalPos, camGoalLook;
+let mode3D = "d", sym3D = "p", spd3D = 1.0, op3D = 0.28, pulse3DEnergy = 0, inited3D = false, activeView = "viz";
+const vis3D = { knot: true, flux: true, quarks: true, shells: true };
+const phase3D = { kWave: 2.2, omega: 5.5, amp: 1.05, envWidth: 2.8 };
+let chart3dInst = null, clock3D = null, fps3DCount = 0, lastFps3DT = performance.now();
+
+const MODE3D_NOTES = {
+  d: ['Cat C · Charged Soliton', '4 counter-rotating simplicial shells (<b>d_s &isin; {4,3,2,1}</b>), Clifford (P,Q) torus knot, K&#8323; quark triad, and radial electric field spines.'],
+  c: ['Cat C · Neutral Soliton', 'Neutral 4-zone hadronic soliton without external Coulomb field. Click any of the <b>21 DESY states</b> to reshape the knot!'],
+  b: ['Cat A · Massless Photon', 'Orthogonal E/B wave ribbons with ghost-free Gaussian propagator <b>D(k&sup2;) = e<sup>&minus;&tau;k&sup2;</sup>/k&sup2;</b>.'],
+  a: ['Cat B/D/F · Regular BH', 'Hayward/Dymnikova regular bowl (<i>K(0) &lt; &infin;</i>), photon sphere <b>r_ps</b>, EHT shadow <b>3&radic;3 r_s</b>, and animated ringdown echo.'],
+  s: ['Cat B · KKT-Newton Funnel', 'Exact constrained radial minimizer <b>&phi;(r)</b> driven live by Panel B frame scrubber &amp; solver ladder.'],
+  h: ['Cat A · 16V Hodge Complex', '16-vertex simplicial complex driven by Panel A verifying <b>B&#8321;B&#8322; &equiv; 0</b> with cyan/red Fiedler coloring and gold snake path.'],
+  k: ['Cat D · Kontrabarie & EFT', 'Whispering-gallery Poynting helix with live <b>Dim-8 EFT suppression (&omega;/&omega;_Pl)&sup2;</b> &mdash; DC &omega;=0 yields <b>f_conv &equiv; 0</b>.'],
+  m: ['Ch. 11 · Galactic BEC Halo', 'Proca mesofield BEC solitonic core flattening the NFW cusp and producing flat rotation curves <b>v_flat</b>.'],
+  g: ['Cat G · Sheaf-PEPS & MERA', '3D tetrahedral Sheaf-PEPS driven live by Panel D Schmidt spectra + rotating isometric Radial MERA rings (<b>&Delta;_kin=2.0</b>).']
+};
+
+function mkGlowTex(rgb){
+  const c = document.createElement("canvas"); c.width = c.height = 64; const x = c.getContext("2d");
+  const g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, `rgba(${rgb},1)`); g.addColorStop(0.3, `rgba(${rgb},0.7)`); g.addColorStop(1, `rgba(${rgb},0)`);
+  x.fillStyle = g; x.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c);
+}
+
+function renderChart3D(type, data, options){
+  if(typeof Chart === "undefined") return;
+  const ctx = $("chart3d").getContext("2d");
+  Chart.defaults.color = "#94a3b8"; Chart.defaults.font.family = "ui-monospace, monospace"; Chart.defaults.font.size = 9;
+  if(chart3dInst) chart3dInst.destroy();
+  chart3dInst = new Chart(ctx, { type, data, options: Object.assign({ responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { boxWidth: 10, padding: 6 } } } }, options) });
+}
 
 function init3D(){
   if(inited3D || typeof THREE === "undefined") return;
   inited3D = true;
-  const el = $("stage3d");
-  scene3D = new THREE.Scene();
-  cam3D = new THREE.PerspectiveCamera(42, Math.max(1, el.clientWidth) / Math.max(1, el.clientHeight), 0.1, 100);
-  cam3D.position.set(0, 2.8, 7.6);
-  ren3D = new THREE.WebGLRenderer({ antialias: true });
-  ren3D.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-  ren3D.setClearColor(0x040710, 1);
-  el.appendChild(ren3D.domElement);
-  ctrl3D = new THREE.OrbitControls(cam3D, ren3D.domElement);
-  ctrl3D.enableDamping = true; ctrl3D.dampingFactor = 0.06;
+  clock3D = new THREE.Clock();
+  const stage3dEl = $("stage3d");
+  scene = new THREE.Scene(); scene.fog = new THREE.FogExp2(0x040710, 0.025);
+  camera = new THREE.PerspectiveCamera(42, 1, 0.1, 120); camera.position.set(0, 2.8, 8.8);
+  renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); renderer.setClearColor(0x040710, 1);
+  stage3dEl.appendChild(renderer.domElement);
 
-  scene3D.add(new THREE.AmbientLight(0x1e3a5f, 1.6));
-  const dl = new THREE.DirectionalLight(0xffffff, 1.1); dl.position.set(5, 10, 7); scene3D.add(dl);
+  composer = new THREE.EffectComposer(renderer);
+  composer.addPass(new THREE.RenderPass(scene, camera));
+  composer.addPass(new THREE.UnrealBloomPass(new THREE.Vector2(800, 600), 0.50, 0.35, 0.24));
 
-  gHodge3D = new THREE.Group(); gKKT3D = new THREE.Group(); gPEPS3D = new THREE.Group(); gSoliton3D = new THREE.Group();
-  scene3D.add(gHodge3D, gKKT3D, gPEPS3D, gSoliton3D);
+  orbit = new THREE.OrbitControls(camera, renderer.domElement);
+  orbit.enableDamping = true; orbit.dampingFactor = 0.05; orbit.minDistance = 2.0; orbit.maxDistance = 28.0;
+  camGoalPos = new THREE.Vector3(0, 2.8, 8.8); camGoalLook = new THREE.Vector3(0, 0, 0);
+  orbit.addEventListener("start", () => { camTrans = false; });
 
-  // KKT Funnel Mesh
-  kktMesh3D = new THREE.Mesh(
-    new THREE.PlaneGeometry(6.0, 6.0, 40, 40),
-    new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0284c7, wireframe: true, emissiveIntensity: 0.55 })
-  );
-  kktMesh3D.rotation.x = -Math.PI / 2;
-  gKKT3D.add(kktMesh3D);
+  scene.add(new THREE.AmbientLight(0x122b4c, 1.55));
+  const kl = new THREE.DirectionalLight(0xffffff, 1.15); kl.position.set(6, 12, 8); scene.add(kl);
+  const fl = new THREE.DirectionalLight(0x38bdf8, 0.85); fl.position.set(-8, -4, -6); scene.add(fl);
+  coreLight = new THREE.PointLight(0xf43f5e, 2.2, 10); scene.add(coreLight);
 
-  // Tetrahedral Sheaf-PEPS
-  const tet = [
-    new THREE.Vector3(0, 1.45, 0), new THREE.Vector3(-1.35, -0.8, 1.1),
-    new THREE.Vector3(1.35, -0.8, 1.1), new THREE.Vector3(0, -0.8, -1.45)
-  ];
-  tet.forEach((v, i) => {
-    const m = new THREE.Mesh(new THREE.SphereGeometry(0.22, 18, 18),
-      new THREE.MeshStandardMaterial({ color: i === 0 ? 0xfbbf24 : 0x2dd4bf, emissive: i === 0 ? 0xd97706 : 0x0d9488, emissiveIntensity: 0.9 }));
-    m.position.copy(v); gPEPS3D.add(m);
-  });
-  pepsEdges3D = [[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]].map(([u, v], idx) => {
-    const p1 = tet[u], p2 = tet[v];
-    const c = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, p1.distanceTo(p2), 10),
-      new THREE.MeshBasicMaterial({ color: idx < 3 ? 0xf43f5e : 0x38bdf8 }));
-    c.position.copy(p1).add(p2).multiplyScalar(0.5);
-    c.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), p2.clone().sub(p1).normalize());
-    gPEPS3D.add(c); return c;
-  });
+  gCorpuscle = new THREE.Group(); gPhoton = new THREE.Group(); gBH = new THREE.Group(); gKKT = new THREE.Group();
+  gHodge = new THREE.Group(); gKontra = new THREE.Group(); gHalo = new THREE.Group(); gPEPS = new THREE.Group();
+  scene.add(gCorpuscle, gPhoton, gBH, gKKT, gHodge, gKontra, gHalo, gPEPS);
 
-  // 4-Zone Hadronic Soliton Shells
-  solSpheres3D = [0.75, 1.45, 2.15, 2.85].map((r, i) => {
+  // Soliton Shells & Knot (d, c)
+  zoneSpheres = [0.82, 1.65, 2.45, 3.25].map((r, i) => {
     const m = new THREE.Mesh(new THREE.IcosahedronGeometry(r, i + 1), new THREE.MeshPhongMaterial({
       color: [0xf43f5e, 0x38bdf8, 0xfbbf24, 0xa78bfa][i], wireframe: true, transparent: true, opacity: [0.42, 0.28, 0.20, 0.14][i], depthWrite: false
     }));
-    gSoliton3D.add(m); return m;
+    gCorpuscle.add(m); return m;
   });
-  rebuildSolitonKnot3D("p");
+  rebuildKnot3D(1, 3);
+
+  quarkGrp = new THREE.Group(); gCorpuscle.add(quarkGrp);
+  fluxCyls = [0xf43f5e, 0x4ade80, 0x38bdf8].map((col, q) => {
+    const a = (q / 3) * TWO_PI_JS, qM = new THREE.Mesh(new THREE.SphereGeometry(0.15, 18, 18), new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 1.1 }));
+    qM.position.set(0.48 * Math.cos(a), 0, 0.48 * Math.sin(a)); quarkGrp.add(qM);
+    const tM = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.48, 8), new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.6 }));
+    quarkGrp.add(tM); return { tM, qM };
+  });
+
+  const streamN = 640, streamGeo = new THREE.BufferGeometry(), streamPos = new Float32Array(streamN * 3), streamPh = new Float32Array(streamN);
+  for(let s = 0; s < streamN; s++) streamPh[s] = Math.random() * TWO_PI_JS;
+  streamGeo.setAttribute("position", new THREE.BufferAttribute(streamPos, 3));
+  streamGeo.userData.streamPh = streamPh;
+  streamPts = new THREE.Points(streamGeo, new THREE.PointsMaterial({ size: 0.085, map: mkGlowTex("56,189,248"), transparent: true, opacity: 0.72, blending: THREE.AdditiveBlending, depthWrite: false }));
+  gCorpuscle.add(streamPts);
+
+  eFieldGrp = new THREE.Group(); gCorpuscle.add(eFieldGrp);
+  eSpines = [];
+  for(let i = 0; i < 16; i++){
+    const p = Math.acos(-1 + (2 * i) / 16), th = Math.sqrt(16 * Math.PI) * p;
+    const dir = new THREE.Vector3(Math.cos(th) * Math.sin(p), Math.sin(th) * Math.sin(p), Math.cos(p)).normalize();
+    const arrow = new THREE.ArrowHelper(dir, new THREE.Vector3(), 3.2, 0xf43f5e, 0.2, 0.1);
+    const bead = new THREE.Mesh(new THREE.SphereGeometry(0.085, 10, 10), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xf43f5e, emissiveIntensity: 1.5 }));
+    eFieldGrp.add(arrow, bead); eSpines.push({ arrow, dir, bead, ph: i / 16 });
+  }
+
+  // Photon (b)
+  eRibG = new THREE.PlaneGeometry(wLen, 0.02, wSeg, 1);
+  bRibG = new THREE.PlaneGeometry(wLen, 0.02, wSeg, 1); bRibG.rotateX(Math.PI / 2);
+  gPhoton.add(
+    new THREE.Mesh(eRibG, new THREE.MeshBasicMaterial({ color: 0xfbbf24, side: THREE.DoubleSide, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false })),
+    new THREE.Mesh(bRibG, new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false })),
+    new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-4, 0, 0), new THREE.Vector3(4, 0, 0)]), new THREE.LineBasicMaterial({ color: 0x64748b }))
+  );
+
+  // Regular BH (a)
+  bhGrid = new THREE.Mesh(new THREE.PlaneGeometry(7.2, 7.2, 42, 42), new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x047857, wireframe: true, side: THREE.DoubleSide, emissiveIntensity: 0.55 })); bhGrid.rotation.x = -Math.PI / 2;
+  echoRing = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.48, 48), new THREE.MeshBasicMaterial({ color: 0xfbbf24, transparent: true, opacity: 0.85, side: THREE.DoubleSide })); echoRing.rotation.x = -Math.PI / 2;
+  gBH.add(bhGrid, new THREE.LineSegments(new THREE.WireframeGeometry(new THREE.SphereGeometry(R_MIN, 16, 12)), new THREE.LineBasicMaterial({ color: 0xfbbf24, transparent: true, opacity: 0.7 })), new THREE.LineSegments(new THREE.WireframeGeometry(new THREE.SphereGeometry(R_PS, 18, 12)), new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.42 })), echoRing);
+
+  // KKT Funnel (s)
+  kktGrid = new THREE.Mesh(new THREE.PlaneGeometry(6.4, 6.4, 46, 46), new THREE.MeshStandardMaterial({ color: 0x0ea5e9, emissive: 0x0284c7, wireframe: true, side: THREE.DoubleSide, emissiveIntensity: 0.55 })); kktGrid.rotation.x = -Math.PI / 2;
+  gKKT.add(kktGrid, new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16), new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 1.5 })));
+
+  // Kontrabarie (k)
+  kCav = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.85, 3.8, 36, 12, true), new THREE.MeshStandardMaterial({ color: 0x0ea5e9, emissive: 0x0284c7, wireframe: true, side: THREE.DoubleSide, transparent: true, opacity: 0.5 })); kCav.rotation.z = Math.PI / 2;
+  const pPts = []; for(let i = 0; i <= 200; i++){ const t = (i / 200) * Math.PI * 10, x = -1.6 + (i / 200) * 3.2, r = 1.22 - 0.16 * x; pPts.push(new THREE.Vector3(x, r * Math.cos(t), r * Math.sin(t))); }
+  pTube = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pPts), 140, 0.04, 8, false), new THREE.MeshBasicMaterial({ color: 0xf43f5e }));
+  kThrust = new THREE.Group(); [-0.6, 0, 0.6].forEach(y => kThrust.add(new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(2.0, y, 0), 1.4, 0x4ade80, 0.32, 0.18)));
+  gKontra.add(kCav, pTube, kThrust);
+
+  // BEC Halo (m)
+  becSphere = new THREE.Mesh(new THREE.SphereGeometry(0.92, 32, 32), new THREE.MeshStandardMaterial({ color: 0x2dd4bf, emissive: 0x06b6d4, wireframe: true, transparent: true, opacity: 0.45 }));
+  const galGeo = new THREE.BufferGeometry(), gP = new Float32Array(2000 * 3), gC = new Float32Array(2000 * 3);
+  for(let i = 0; i < 2000; i++){
+    const r = 0.25 + Math.pow(Math.random(), 0.72) * 3.8, a = (i % 2) * Math.PI + r * 2.1 + (Math.random() - 0.5) * 0.48;
+    gP[i * 3] = Math.cos(a) * r; gP[i * 3 + 1] = (Math.random() - 0.5) * 0.22 * (1 - r / 4.3); gP[i * 3 + 2] = Math.sin(a) * r;
+    const c = new THREE.Color().setHSL(0.54 - (r / 4.2) * 0.18, 0.88, 0.62); gC[i * 3] = c.r; gC[i * 3 + 1] = c.g; gC[i * 3 + 2] = c.b;
+  }
+  galGeo.setAttribute("position", new THREE.BufferAttribute(gP, 3)); galGeo.setAttribute("color", new THREE.BufferAttribute(gC, 3));
+  galPts = new THREE.Points(galGeo, new THREE.PointsMaterial({ size: 0.06, vertexColors: true, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
+  gHalo.add(becSphere, galPts);
+
+  // 3D PEPS/MERA (g)
+  const tetV = [new THREE.Vector3(0, 1.55, 0), new THREE.Vector3(-1.45, -0.85, 1.15), new THREE.Vector3(1.45, -0.85, 1.15), new THREE.Vector3(0, -0.85, -1.55)];
+  pepsNodes = tetV.map((v, i) => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.24, 22, 22), new THREE.MeshStandardMaterial({ color: i === 0 ? 0xfbbf24 : 0x2dd4bf, emissive: i === 0 ? 0xd97706 : 0x0d9488, emissiveIntensity: 1.1 })); m.position.copy(v); gPEPS.add(m); return m; });
+  pepsEdges = [[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]].map(([u, v], idx) => {
+    const p1 = tetV[u], p2 = tetV[v], c = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, p1.distanceTo(p2), 10), new THREE.MeshBasicMaterial({ color: idx < 3 ? 0xf43f5e : 0x38bdf8 }));
+    c.position.copy(p1).add(p2).multiplyScalar(0.5); c.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), p2.clone().sub(p1).normalize()); gPEPS.add(c); return c;
+  });
+  meraRings = [1.95, 2.75, 3.45].map((r, i) => { const m = new THREE.Mesh(new THREE.TorusGeometry(r, 0.025, 10, 64), new THREE.MeshBasicMaterial({ color: i === 1 ? 0xf43f5e : 0x38bdf8, transparent: true, opacity: 0.45 })); m.rotation.x = Math.PI / 2; gPEPS.add(m); return m; });
+
+  // Double-click / Double-tap Excitation Pulse on 3D Canvas
+  let last3DTap = 0;
+  stage3dEl.addEventListener("dblclick", () => trigger3DPulse());
+  stage3dEl.addEventListener("touchend", ev => {
+    if(ev.touches.length === 0){
+      const now = performance.now();
+      if(now - last3DTap < 300) trigger3DPulse();
+      last3DTap = now;
+    }
+  });
 
   sync3DFromData();
+  updateOp3D(28);
   set3DMode(mode3D);
-  (function anim(){
-    requestAnimationFrame(anim);
-    if(activeView !== "3d") return;
-    ctrl3D.update();
-    if(gHodge3D.visible) gHodge3D.rotation.y += 0.004;
-    if(gPEPS3D.visible) gPEPS3D.rotation.y += 0.006;
-    if(gSoliton3D.visible){
-      solSpheres3D.forEach((s, i) => s.rotation.y += 0.004 * (i % 2 ? -1 : 1));
-      if(solKnot3D) solKnot3D.rotation.y += 0.01;
-    }
-    ren3D.render(scene3D, cam3D);
-  })();
+  requestAnimationFrame(tick3D);
 }
 
-function rebuildSolitonKnot3D(sym){
-  activeSolSym = sym;
+function rebuildKnot3D(P = 1, Q = 3){
   if(!inited3D) return;
-  const st = CANONICAL_21.find(s => s.sym === sym) || CANONICAL_21[0];
-  if(solKnot3D){ gSoliton3D.remove(solKnot3D); solKnot3D.geometry.dispose(); }
-  const pts = [];
-  for(let i = 0; i <= 240; i++){
-    const t = (i / 240) * TWO_PI_JS;
-    pts.push(new THREE.Vector3((1.3 + 0.34 * Math.cos(st.knotQ * t)) * Math.cos(st.knotP * t), 0.34 * Math.sin(st.knotQ * t), (1.3 + 0.34 * Math.cos(st.knotQ * t)) * Math.sin(st.knotP * t)));
-  }
-  solKnot3D = new THREE.Mesh(
-    new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true), 140, 0.055, 10, true),
-    new THREE.MeshStandardMaterial({ color: 0x2dd4bf, emissive: 0x0d9488, emissiveIntensity: 0.75 })
-  );
-  gSoliton3D.add(solKnot3D);
-  const calc = calcCanonicalStateJS(st);
-  $("stage3dHudOverlay").innerHTML = `<b>${st.name}</b> · Mass: ${calc.mev.toFixed(4)} MeV (DESY: ${st.ref.toFixed(4)}) · Knot (${st.knotP},${st.knotQ}) · Winding (${calc.n.join(",")})`;
-}
-
-function inspect3DSoliton(sym){
-  closeAuditModal();
-  toggleMobileHud(false);
-  switchTopTab("3d");
-  $("mode3dSel").value = "soliton";
-  set3DMode("soliton");
-  rebuildSolitonKnot3D(sym);
-  toast(`3D Soliton: ${sym}`);
+  if(knotMesh){ gCorpuscle.remove(knotMesh); knotMesh.geometry.dispose(); }
+  const pts = []; for(let i = 0; i <= 300; i++){ const t = (i / 300) * TWO_PI_JS; pts.push(new THREE.Vector3((1.42 + 0.36 * Math.cos(Q * t)) * Math.cos(P * t), 0.36 * Math.sin(Q * t), (1.42 + 0.36 * Math.cos(Q * t)) * Math.sin(P * t))); }
+  knotMesh = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true), 160, 0.06, 12, true), new THREE.MeshStandardMaterial({ color: 0x2dd4bf, emissive: 0x0d9488, emissiveIntensity: 0.78, roughness: 0.2, metalness: 0.45, transparent: true, opacity: 0.92 }));
+  knotMesh.visible = vis3D.knot; gCorpuscle.add(knotMesh);
 }
 
 function sync3DFromData(){
   if(!inited3D) return;
-  while(gHodge3D.children.length) gHodge3D.remove(gHodge3D.children[0]);
+  // Sync Panel A -> 16V Hodge Complex
+  while(gHodge.children.length) gHodge.remove(gHodge.children[0]);
   const A = DATA?.panel_a;
   if(A){
-    const pts = [], perm = A.fiedler_permutation || [];
+    const nodes = [], perm = A.fiedler_permutation || [];
     const rankOf = {}; perm.forEach((v, r) => rankOf[v] = r);
     for(let i = 0; i < A.n_vertices; i++){
-      const ang = (TWO_PI_JS * i) / A.n_vertices, t = (rankOf[i] ?? i) / Math.max(1, A.n_vertices - 1);
-      const v = new THREE.Vector3(Math.cos(ang) * 2.4, (t - 0.5) * 1.4, Math.sin(ang) * 2.4);
-      pts.push(v);
-      const m = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 12),
-        new THREE.MeshStandardMaterial({ color: t < 0.5 ? 0x2dd4bf : 0xf43f5e, emissive: t < 0.5 ? 0x0d9488 : 0xe11d48 }));
-      m.position.copy(v); gHodge3D.add(m);
+      const a = (TWO_PI_JS * i) / A.n_vertices, t = (rankOf[i] ?? i) / Math.max(1, A.n_vertices - 1);
+      const isLeft = t < 0.5;
+      const m = new THREE.Mesh(new THREE.SphereGeometry(0.13, 14, 14), new THREE.MeshStandardMaterial({ color: isLeft ? 0x2dd4bf : 0xf43f5e, emissive: isLeft ? 0x0d9488 : 0xe11d48, emissiveIntensity: 1.1 }));
+      m.position.set(Math.cos(a) * 2.55, (t - 0.5) * 1.1, Math.sin(a) * 2.55); gHodge.add(m); nodes.push(m);
     }
     for(const [u, v] of A.edges || []){
-      gHodge3D.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([pts[u], pts[v]]),
-        new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.35 })));
+      if(nodes[u] && nodes[v]) gHodge.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([nodes[u].position, nodes[v].position]), new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.4 })));
     }
-    if(perm.length) gHodge3D.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(perm.map(v => pts[v])),
-      new THREE.LineBasicMaterial({ color: 0xfbbf24 })));
+    if(perm.length) gHodge.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(perm.map(v => nodes[v].position.clone())), new THREE.LineBasicMaterial({ color: 0xfbbf24 })));
   }
-  const frB = DATA?.panel_b?.frames?.[Math.min(pbState.frame, (DATA?.panel_b?.frames?.length||1)-1)];
-  if(frB?.phi?.length){
-    const pos = kktMesh3D.geometry.attributes.position, nP = frB.phi.length;
-    for(let i = 0; i < pos.count; i++){
-      const r = Math.hypot(pos.getX(i), pos.getY(i));
-      const idx = Math.min(nP - 1, Math.floor(Math.min(1, r / 3.0) * (nP - 1)));
-      pos.setZ(i, -1.6 * (1 - frB.phi[idx]));
-    }
-    pos.needsUpdate = true;
-  }
+  // Sync Panel D -> PEPS Edge Cylinder Thickness
   const frD = DATA?.panel_d?.frames?.[Math.min(pbState.frame, (DATA?.panel_d?.frames?.length||1)-1)];
-  if(frD?.lambda_spectra?.length){
-    pepsEdges3D.forEach((cyl, i) => {
+  if(frD?.lambda_spectra?.length && pepsEdges.length){
+    pepsEdges.forEach((cyl, i) => {
       const s0 = frD.lambda_spectra[i]?.[0] ?? 0.5;
-      cyl.scale.set(0.7 + s0 * 1.6, 1, 0.7 + s0 * 1.6);
+      cyl.scale.set(0.75 + s0 * 1.5, 1, 0.75 + s0 * 1.5);
     });
   }
 }
 
 function set3DMode(m){
-  mode3D = m;
+  mode3D = m; $("mode3dSel").value = m;
   if(!inited3D) return;
-  gHodge3D.visible = (m === "hodge");
-  gKKT3D.visible = (m === "kkt");
-  gPEPS3D.visible = (m === "peps");
-  gSoliton3D.visible = (m === "soliton");
-  if(m === "soliton") rebuildSolitonKnot3D(activeSolSym);
-  else $("stage3dHudOverlay").innerHTML = "<b>3D Interactive Lab:</b> Drag to orbit · Scroll/Pinch to zoom · Scrub frames above";
-}
-function resize3D(){
-  if(!inited3D) return;
-  const el = $("stage3d"), w = el.clientWidth, h = el.clientHeight;
-  if(w > 0 && h > 0){ cam3D.aspect = w / h; cam3D.updateProjectionMatrix(); ren3D.setSize(w, h, false); }
+  [gCorpuscle, gPhoton, gBH, gKKT, gHodge, gKontra, gHalo, gPEPS].forEach(g => g.visible = false);
+  gCorpuscle.visible = (m === "d" || m === "c"); gPhoton.visible = (m === "b"); gBH.visible = (m === "a");
+  gKKT.visible = (m === "s"); gHodge.visible = (m === "h"); gKontra.visible = (m === "k");
+  gHalo.visible = (m === "m"); gPEPS.visible = (m === "g");
+
+  $("ctl3dSoliton").classList.toggle("hidden", !(m === "d" || m === "c" || m === "s"));
+  $("ctl3dBH").classList.toggle("hidden", m !== "a");
+  $("ctl3dKontra").classList.toggle("hidden", m !== "k");
+  $("ctl3dHalo").classList.toggle("hidden", m !== "m");
+  $("ctl3dPEPS").classList.toggle("hidden", m !== "g");
+
+  const [st, nt] = MODE3D_NOTES[m];
+  $("mode3dNote").innerHTML = `<div class="stratum">${st}</div><br>${nt}`;
+  $("dock3dTitle").textContent = `3D Analytics · ${st}`;
+
+  if(m === "d" || m === "c" || m === "s") select3DParticle(m === "c" ? "n" : (m === "d" ? "p" : sym3D));
+  else if(m === "b"){
+    $("m3State").textContent = "Massless Photon (l=0)";
+    $("m3Mass").textContent = "m_A ≡ 0.0000 MeV";
+    const ks = [], de = [], dc = []; for(let k = 0.4; k <= 4.0; k += 0.25){ ks.push(k.toFixed(1)); dc.push(1 / (k * k)); de.push(Math.exp(-0.45 * k * k) / (k * k)); }
+    renderChart3D("line", { labels: ks, datasets: [{ label: "EMG UV-Finite", data: de, borderColor: "#38bdf8", pointRadius: 0 }, { label: "1/k²", data: dc, borderColor: "#f43f5e", borderDash: [4, 4], pointRadius: 0 }] }, { scales: { y: { min: 0, max: 3.5 } } });
+  } else if(m === "a") updateBH3D($("sBHMass").value);
+  else if(m === "h"){
+    sync3DFromData();
+    const A = DATA?.panel_a;
+    $("m3State").textContent = "16V Simplicial Complex K";
+    $("m3Mass").textContent = A ? `λ₂=${A.lambda_2_fiedler.toFixed(4)} | Cut=${A.cutwidth_fiedler}` : "—";
+    const ps = [], eE = [], eN = []; for(let p = -3.14; p <= 3.15; p += 0.35){ ps.push(p.toFixed(1)); eE.push(4 * Math.sin(p / 2) ** 2); eN.push(Math.sin(p) ** 2); }
+    renderChart3D("line", { labels: ps, datasets: [{ label: "B₁ᵀ (N=1)", data: eE, borderColor: "#2dd4bf", pointRadius: 0 }, { label: "Doublers", data: eN, borderColor: "#f43f5e", borderDash: [4, 4], pointRadius: 0 }] });
+  } else if(m === "k") updateKontra3D();
+  else if(m === "m") updateHalo3D();
+  else if(m === "g") updatePEPS3D();
 }
 
+function select3DParticle(sym){
+  const st = CANONICAL_21.find(s => s.sym === sym) || CANONICAL_21[0]; sym3D = st.sym;
+  $("p3dSel").value = st.sym;
+  const calc = calcCanonicalStateJS(st);
+  $("sKnotP").value = st.knotP; $("sKnotQ").value = st.knotQ;
+  $("vKnotP").textContent = st.knotP; $("vKnotQ").textContent = st.knotQ;
+  rebuildKnot3D(st.knotP, st.knotQ);
+
+  $("m3State").textContent = `${st.name} (q=${calc.qx >= 0 ? "+" : ""}${calc.qx})`;
+  $("m3Mass").textContent = `${calc.mev.toFixed(4)} MeV`;
+
+  const Z = st.zones, G = [0.25 * Z[0] ** 2 * (1 + Z[0]) ** 2, (Z[1] * (2 * Z[1] ** 2 + 3 * Z[1] + 1)) / 6, 0.5 * Z[2] * (1 + Z[2]), Z[3]];
+  const Gs = G[0] + G[1] + G[2] + G[3], pct = G.map(g => (100 * g) / Gs);
+  $("hudZones3d").textContent = `Zones (${Z.join(",")})`;
+  $("hudZonePct3d").textContent = pct.slice(0, 3).map(v => v.toFixed(1) + "%").join("|");
+  pct.forEach((v, i) => { $("zb" + (i + 1)).style.width = v.toFixed(1) + "%"; });
+
+  const frB = DATA?.panel_b?.frames?.[Math.min(pbState.frame, (DATA?.panel_b?.frames?.length||1)-1)];
+  if(mode3D === "s" && frB?.phi?.length){
+    renderChart3D("line", { labels: frB.phi.map((_, i) => (i / frB.N).toFixed(2)), datasets: [{ label: `KKT φ(r) N=${frB.N}`, data: frB.phi, borderColor: "#38bdf8", backgroundColor: "rgba(56,189,248,0.18)", fill: true, pointRadius: 0 }] });
+  } else {
+    renderChart3D("bar", { labels: ["Core", "Vortex", "Wall", "Tail"], datasets: [{ label: `${st.sym} MeV`, data: G.map(g => Math.max(0.01, (g / Gs) * calc.mev)), backgroundColor: ["#f43f5e", "#38bdf8", "#fbbf24", "#a78bfa"] }] }, { scales: { y: { type: "logarithmic" } } });
+  }
+  quarkGrp.visible = (st.k === 2) && vis3D.quarks;
+  coreLight.color.setHex(calc.qx !== 0 ? 0xf43f5e : 0x38bdf8);
+  eFieldGrp.visible = (calc.qx !== 0 && mode3D === "d");
+  if(eFieldGrp.visible){
+    const sgn = Math.sign(calc.qx), col = sgn > 0 ? 0xf43f5e : 0x38bdf8;
+    eSpines.forEach(({ arrow, dir, bead }) => { arrow.setDirection(dir.clone().multiplyScalar(sgn)); arrow.setColor(col); bead.material.emissive.setHex(col); });
+  }
+}
+
+function stageParticle3D(sym){
+  const st = CANONICAL_21.find(s => s.sym === sym);
+  closeAuditModal(); toggleMobileHud(false);
+  switchTopTab("3d");
+  if(st){ set3DMode(st.mode); select3DParticle(sym); toast(`3D Staged ${st.name}`); }
+}
+
+function updateKnot3D(){ const P = +$("sKnotP").value, Q = +$("sKnotQ").value; $("vKnotP").textContent = P; $("vKnotQ").textContent = Q; rebuildKnot3D(P, Q); }
+function toggleLayer3D(k, b){
+  vis3D[k] = !vis3D[k]; b.classList.toggle("on", vis3D[k]);
+  if(k === "knot" && knotMesh) knotMesh.visible = vis3D.knot;
+  if(k === "flux") streamPts.visible = vis3D.flux;
+  if(k === "quarks") quarkGrp.visible = vis3D.quarks;
+  if(k === "shells") zoneSpheres.forEach(s => s.visible = vis3D.shells);
+}
+function setBH3D(m){ $("sBHMass").value = m; updateBH3D(m); }
+function updateBH3D(val){
+  const { G, C, M_PL } = getMetroConstants();
+  const Ms = +val, M0 = Ms * 1.98847e30, dtMs = ((3 * G * M0) / (4 * C ** 3)) * Math.log(M0 / M_PL) * 1e3;
+  $("vBHMass").textContent = Ms.toFixed(1);
+  if(mode3D === "a"){
+    $("m3State").textContent = `Regular Core (${Ms.toFixed(1)} M☉)`;
+    $("m3Mass").textContent = `Δt = ${dtMs.toFixed(3)} ms`;
+    const rv = [], ar = [], ag = []; for(let r = 0.05; r <= 4; r += 0.18){ rv.push(r.toFixed(1)); ar.push(1 - (2 * r * r) / (r ** 3 + 0.35 ** 3)); ag.push(Math.max(-1.2, 1 - 2 / r)); }
+    renderChart3D("line", { labels: rv, datasets: [{ label: "Regular A(r)", data: ar, borderColor: "#4ade80", pointRadius: 0 }, { label: "GR", data: ag, borderColor: "#f43f5e", borderDash: [4, 4], pointRadius: 0 }] }, { scales: { y: { min: -1.2, max: 1.05 } } });
+  }
+}
+function updateKontra3D(){
+  const { OMEGA_PL } = getMetroConstants();
+  const T = +$("sKTemp").value, B = +$("sKMag").value, w = +$("sKFreq").value;
+  const eft = w > 0 ? Math.pow((TWO_PI_JS * w * 1e9) / OMEGA_PL, 2) : 0, on = T <= 20 && B >= 15 && w > 0;
+  $("vKTemp").textContent = `${T.toFixed(1)} K`; $("vKMag").textContent = `${B.toFixed(1)} T`; $("vKFreq").textContent = `${w.toFixed(1)} GHz`;
+  kThrust.visible = on;
+  if(mode3D === "k"){
+    $("m3State").textContent = w === 0 ? "Static DC NMR (ω=0)" : (on ? "Kontrabarie Active" : "Sub-Threshold");
+    $("m3Mass").textContent = w === 0 ? "f_conv ≡ 0" : `EFT=${eft.toExponential(2)}`;
+    const rP = [], vT = [], vN = []; for(let r = 0.25; r <= 3.2; r += 0.18){ rP.push(r.toFixed(1)); const vn = -0.6 / r; vN.push(vn); vT.push(vn + (on ? 1.75 * Math.exp(-2.4 * r * r) : 0)); }
+    renderChart3D("line", { labels: rP, datasets: [{ label: "G_N+g⁻", data: vT, borderColor: "#38bdf8", pointRadius: 0 }, { label: "Newton", data: vN, borderColor: "#64748b", borderDash: [4, 4], pointRadius: 0 }] });
+  }
+}
+function updateHalo3D(){
+  const Mb = +$("sHMass").value / 10, rc = +$("sHRc").value / 100, vf = 136.5 * Math.pow(Mb, 0.25);
+  $("vHMass").textContent = `${Mb.toFixed(1)}e10`; $("vHRc").textContent = rc.toFixed(2);
+  becSphere.scale.setScalar(rc / 1.24);
+  if(mode3D === "m"){
+    $("m3State").textContent = "Mesofield BEC Halo"; $("m3Mass").textContent = `v_flat = ${vf.toFixed(1)} km/s`;
+    const rk = [], ve = [], vk = []; for(let r = 0.5; r <= 22; r += 1.5){ rk.push(r.toFixed(0)); ve.push(vf * (1 - Math.exp(-r / rc))); vk.push(vf * Math.sqrt(rc / r)); }
+    renderChart3D("line", { labels: rk, datasets: [{ label: "BEC Flat", data: ve, borderColor: "#2dd4bf", pointRadius: 0 }, { label: "Kepler", data: vk, borderColor: "#f43f5e", borderDash: [4, 4], pointRadius: 0 }] });
+  }
+}
+function updatePEPS3D(){
+  const chi = +$("sPEPSChi").value, sB = 3 * Math.log(chi);
+  $("vPEPSChi").textContent = chi;
+  const frD = DATA?.panel_d?.frames?.[Math.min(pbState.frame, (DATA?.panel_d?.frames?.length||1)-1)];
+  const sActual = frD?.cut_entropy ?? sB * 0.78;
+  if(mode3D === "g"){
+    $("m3State").textContent = `Sheaf-PEPS (χ=${chi})`; $("m3Mass").textContent = `S_vN=${sActual.toFixed(3)}≤${sB.toFixed(3)}`;
+    const cs = [], sb = [], so = []; for(let c = 2; c <= 16; c += 2){ cs.push("χ" + c); const b = 3 * Math.log(c); sb.push(b); so.push(b * 0.78); }
+    renderChart3D("line", { labels: cs, datasets: [{ label: "Bound", data: sb, borderColor: "#fbbf24", borderDash: [4, 4], pointRadius: 0 }, { label: "S_vN", data: so, borderColor: "#2dd4bf", fill: true, backgroundColor: "rgba(45,212,191,0.16)", pointRadius: 0 }] });
+  }
+}
+function updateOp3D(v){ op3D = v / 100; $("v3Op").textContent = `${v}%`; zoneSpheres.forEach((s, i) => s.material.opacity = Math.min(0.95, op3D * [1.45, 1.15, 0.85, 0.55][i])); }
+function updateSpd3D(v){ spd3D = v / 100; $("v3Spd").textContent = `${spd3D.toFixed(1)}x`; }
+function setCamPreset(p){
+  if(!inited3D) return;
+  if(p === "iso") camGoalPos.set(0, 2.8, 8.8); else if(p === "top") camGoalPos.set(0, 10.5, 0.01); else camGoalPos.set(0, 0.5, 2.8);
+  camGoalLook.set(0, 0, 0); camTrans = true;
+}
+function trigger3DPulse(){
+  pulse3DEnergy = 1.0;
+  logEvent(`3D Excitation pulse injected into Regime (${mode3D}).`, "info");
+  toast("⚡ 3D Field Pulse Injected!");
+}
+
+let last3W = 0, last3H = 0;
+function resize3D(){
+  if(!inited3D) return;
+  const el = $("stage3d"), w = Math.floor(el.clientWidth), h = Math.floor(el.clientHeight);
+  if(w <= 0 || h <= 0 || (w === last3W && h === last3H)) return;
+  last3W = w; last3H = h;
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+  renderer.setSize(w, h, false); composer.setSize(w, h);
+}
+
+function tick3D(now){
+  requestAnimationFrame(tick3D);
+  if(activeView !== "3d" || !inited3D) return;
+  fps3DCount++;
+  if(now - lastFps3DT >= 500){
+    $("fps3dEl").textContent = Math.round((fps3DCount * 1000) / (now - lastFps3DT));
+    fps3DCount = 0; lastFps3DT = now;
+  }
+  const dt = clock3D.getDelta() * spd3D, elapsed = clock3D.getElapsedTime() * spd3D;
+  if(pulse3DEnergy > 0.002) pulse3DEnergy *= 0.94; else pulse3DEnergy = 0;
+  const boost = 1 + pulse3DEnergy * 2.2;
+
+  if(camTrans){
+    camera.position.lerp(camGoalPos, 0.1); orbit.target.lerp(camGoalLook, 0.1);
+    if(camera.position.distanceTo(camGoalPos) < 0.03) camTrans = false;
+  }
+  orbit.update();
+
+  if(mode3D === "d" || mode3D === "c"){
+    zoneSpheres.forEach((s, i) => {
+      s.rotation.y += dt * 0.22 * boost * (i % 2 ? -1 : 1) * (1 + i * 0.15);
+      s.rotation.x = Math.sin(elapsed * 0.35 + i) * 0.14;
+      s.scale.setScalar(1 + pulse3DEnergy * 0.09 * Math.sin(elapsed * 18 + i));
+    });
+    if(knotMesh){ knotMesh.rotation.y = elapsed * 0.65; knotMesh.rotation.z = Math.sin(elapsed * 0.8) * 0.12; }
+    quarkGrp.rotation.y = -elapsed * 0.95 * boost;
+    fluxCyls.forEach(({ tM, qM }) => { tM.position.copy(qM.position).multiplyScalar(0.5); tM.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), qM.position.clone().normalize()); });
+    if(vis3D.flux){
+      const sP = streamPts.geometry.attributes.position.array, streamPh = streamPts.geometry.userData.streamPh;
+      const Pw = +$("sKnotP").value || 1, Qw = +$("sKnotQ").value || 3;
+      for(let s = 0; s < streamPh.length; s++){
+        streamPh[s] = (streamPh[s] + dt * 0.75 * boost) % TWO_PI_JS;
+        const u = streamPh[s] * Pw, v = streamPh[s] * Qw;
+        sP[s * 3] = (1.42 + 0.38 * Math.cos(v)) * Math.cos(u); sP[s * 3 + 1] = 0.38 * Math.sin(v); sP[s * 3 + 2] = (1.42 + 0.38 * Math.cos(v)) * Math.sin(u);
+      }
+      streamPts.geometry.attributes.position.needsUpdate = true;
+    }
+    if(eFieldGrp.visible) eSpines.forEach(sp => { sp.ph = (sp.ph + dt * 1.1 * boost) % 1; sp.bead.position.copy(sp.dir).multiplyScalar(0.55 + sp.ph * 2.8); });
+  } else if(mode3D === "b"){
+    const { kWave, amp, envWidth } = phase3D, fd = Math.exp(-0.08 * kWave * kWave) * boost, ep = eRibG.attributes.position, bp = bRibG.attributes.position;
+    for(let w = 0; w <= wSeg; w++){
+      const x = (w / wSeg) * wLen - wLen / 2, val = Math.sin(kWave * x - kWave * elapsed) * amp * Math.exp(-((x / envWidth) ** 2)) * fd;
+      ep.setXYZ(w * 2 + 1, x, val, 0); ep.setXYZ(w * 2, x, 0, 0); bp.setXYZ(w * 2 + 1, x, 0, val); bp.setXYZ(w * 2, x, 0, 0);
+    }
+    ep.needsUpdate = true; bp.needsUpdate = true;
+  } else if(mode3D === "a"){
+    const gp = bhGrid.geometry.attributes.position, { kWave, omega, amp, envWidth } = phase3D;
+    for(let i = 0; i < gp.count; i++){
+      const x = gp.getX(i), y = gp.getY(i), r = Math.hypot(x, y) + 1e-6;
+      const well = r < R_MIN ? -0.42 * amp * ((r / R_MIN) ** 2) : -0.55 * amp * (1 - Math.exp(-(r - R_MIN) * 0.85)) - 0.42 * amp;
+      gp.setZ(i, well + 0.14 * amp * boost * Math.sin(kWave * r - omega * elapsed) * Math.exp(-r / envWidth));
+    }
+    gp.needsUpdate = true;
+    const ep = (elapsed * 0.65 * boost) % 2, eR = ep < 1 ? R_MIN + (R_PS - R_MIN) * ep : R_PS - (R_PS - R_MIN) * (ep - 1);
+    echoRing.scale.setScalar(eR / R_MIN);
+  } else if(mode3D === "s"){
+    const frB = DATA?.panel_b?.frames?.[Math.min(pbState.frame, (DATA?.panel_b?.frames?.length||1)-1)];
+    if(frB?.phi?.length){
+      const sp = kktGrid.geometry.attributes.position, nP = frB.phi.length;
+      for(let i = 0; i < sp.count; i++){
+        const r = Math.hypot(sp.getX(i), sp.getY(i)), idx = Math.min(nP - 1, Math.floor(Math.min(1, r / 3.2) * (nP - 1)));
+        sp.setZ(i, -1.7 * phase3D.amp * (1 - frB.phi[idx]) + 0.04 * boost * Math.sin(r * 4.5 - elapsed * 2.5));
+      }
+      sp.needsUpdate = true;
+    }
+  } else if(mode3D === "h"){ gHodge.rotation.y += dt * 0.35 * boost; gHodge.rotation.x = Math.sin(elapsed * 0.45) * 0.18; }
+  else if(mode3D === "k"){ pTube.rotation.x += dt * 3.2 * boost; kCav.rotation.x -= dt * 0.25; kThrust.position.x = 0.14 * boost * Math.sin(elapsed * 5); }
+  else if(mode3D === "m"){ galPts.rotation.y += dt * 0.32 * boost; becSphere.rotation.y -= dt * 0.45; }
+  else if(mode3D === "g"){
+    gPEPS.rotation.y += dt * 0.42 * boost;
+    pepsNodes.forEach((n, i) => n.scale.setScalar(1 + 0.15 * boost * Math.sin(elapsed * 3 + i * 1.5)));
+    meraRings.forEach((r, i) => { r.rotation.z = elapsed * (i % 2 ? -0.5 : 0.5) * boost; r.rotation.y = Math.sin(elapsed * 0.6 + i) * 0.22; });
+  }
+  composer.render();
+}
+
+// Dock minimize/expand
+$("dock3dHdr").onclick = () => {
+  const d = $("dock3dWrap"); d.classList.toggle("min");
+  $("dock3dChevron").innerHTML = d.classList.contains("min") ? "&#9650;" : "&#9660;";
+};
+
+// Top-Bar View Switcher (2D Panels | 3D WebGL | Log)
 function switchTopTab(view){
   activeView = view;
+  const is3D = view === "3d";
   $("tabViz").classList.toggle("on", view === "viz");
-  $("tab3D").classList.toggle("on", view === "3d");
+  $("tab3D").classList.toggle("on", is3D);
   $("tabLog").classList.toggle("on", view === "log");
   $("stage").style.display = view === "viz" ? "" : "none";
-  $("stage3dWrap").classList.toggle("open", view === "3d");
-  $("mode3dPill").classList.toggle("show", view === "3d");
+  $("stage3dWrap").classList.toggle("open", is3D);
+  $("mode3dPill").classList.toggle("show", is3D);
+  $("dock3dWrap").classList.toggle("show", is3D);
+  $("hud3dSection").classList.toggle("hidden", !is3D);
   $("logView").classList.toggle("open", view === "log");
   if(view === "log") renderLogLedger();
-  if(view === "3d"){ init3D(); requestAnimationFrame(() => { resize3D(); sync3DFromData(); }); }
+  if(is3D){
+    init3D();
+    requestAnimationFrame(() => { resize3D(); sync3DFromData(); set3DMode(mode3D); });
+  }
 }
 $("tabViz").onclick = () => switchTopTab("viz");
 $("tab3D").onclick = () => switchTopTab("3d");
 $("tabLog").onclick = () => switchTopTab("log");
 $("mode3dSel").onchange = e => set3DMode(e.target.value);
 
+// Hook renderAll so scrubbing frames updates both 2D panels and live 3D regimes
 const _origRenderAll = renderAll;
-renderAll = function(){ _origRenderAll(); sync3DFromData(); };
+renderAll = function(){
+  _origRenderAll();
+  if(inited3D){
+    sync3DFromData();
+    if(mode3D === "s") select3DParticle(sym3D);
+    else if(mode3D === "g") updatePEPS3D();
+  }
+};
 window.addEventListener("resize", resize3D);
+
+// Keys 1-9 jump directly to the 9 3D WebGL regimes, 0 returns to 2D Panels
+window.addEventListener("keydown", e => {
+  if(e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+  if(e.key === "0") switchTopTab("viz");
+  const km = { "1":"d","2":"c","3":"b","4":"a","5":"s","6":"h","7":"k","8":"m","9":"g" };
+  if(km[e.key]){ switchTopTab("3d"); set3DMode(km[e.key]); }
+});
 
 // Init
 syncPlaybackBounds(true);

@@ -854,36 +854,21 @@ function b64ToUtf8(b64){
 }
 
 async function ensurePyodideLoaded(){
-  if (typeof self.loadPyodide === "function") return PYODIDE_BASE;
-  const candidates = [
-    PYODIDE_BASE,
-    "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/"
-  ];
-  let lastErr = null;
-  for (const base of candidates) {
-    try {
-      const resp = await self.fetch(base + "pyodide.js");
-      if (!resp.ok) throw new Error("HTTP " + resp.status);
-      const code = await resp.text();
-      if (!code || code.trimStart().startsWith("<")) {
-        throw new Error("Non-JS HTML response from " + base);
-      }
-      // Strip any top-level `export { ... }` if present so classic importScripts works cleanly
-      const safeCode = code.replace(/^export\s*\{[^}]*\}\s*;?\s*$/gm, "");
-      const blob = new Blob([safeCode], { type: "application/javascript;charset=utf-8" });
-      const blobUrl = URL.createObjectURL(blob);
-      try {
-        importScripts(blobUrl);
-      } finally {
-        URL.revokeObjectURL(blobUrl);
-      }
-      if (typeof self.loadPyodide === "function") return base;
-      throw new Error("loadPyodide not defined after loading " + base + "pyodide.js");
-    } catch (e) {
-      lastErr = e;
-    }
+  if (typeof self.loadPyodide === "function") return;
+  const scriptUrl = PYODIDE_BASE + "pyodide.js";
+  const resp = await self.fetch(scriptUrl);
+  if (!resp.ok) throw new Error("Failed to fetch pyodide.js: HTTP " + resp.status);
+  const code = await resp.text();
+  if (!code || code.trimStart().startsWith("<")) {
+    throw new Error("CDN returned HTML instead of pyodide.js (check network/proxy)");
   }
-  throw new Error("All Pyodide CDN attempts failed: " + (lastErr ? lastErr.message : "unknown"));
+  const blob = new Blob([code], { type: "application/javascript;charset=utf-8" });
+  const blobUrl = URL.createObjectURL(blob);
+  try {
+    importScripts(blobUrl);
+  } finally {
+    URL.revokeObjectURL(blobUrl);
+  }
 }
 
 self.onmessage = async (ev) => {
@@ -891,9 +876,9 @@ self.onmessage = async (ev) => {
   if(msg.type === "boot"){
     try{
       self.postMessage({type:"progress", status:"loading Pyodide...", log:"Loading Pyodide runtime in Web Worker (Cache API enabled)...", cls:"info"});
-      const activeIndexUrl = await ensurePyodideLoaded();
+      await ensurePyodideLoaded();
       pyodide = await loadPyodide({
-        indexURL: activeIndexUrl,
+        indexURL: PYODIDE_BASE,
         stdout: s => self.postMessage({type:"stdout", text: s + "\n"}),
         stderr: s => self.postMessage({type:"stderr", text: s + "\n"}),
       });

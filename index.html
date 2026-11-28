@@ -779,6 +779,7 @@ function appendModal(){
 }
 
 /* ---- Cache API status check for Pyodide CDN assets ---- */
+const PYODIDE_CACHE = "emg-pyodide-v0.27.5-r2";
 async function checkCacheStatus(){
   const tag = $("cacheStatusTag");
   if(!tag) return;
@@ -787,7 +788,9 @@ async function checkCacheStatus(){
     return;
   }
   try{
-    const cache = await caches.open("emg-pyodide-v0.27.5");
+    // Purge legacy cache bucket in case an HTML/truncated CDN response was stored
+    caches.delete("emg-pyodide-v0.27.5").catch(() => {});
+    const cache = await caches.open(PYODIDE_CACHE);
     const keys = await cache.keys();
     if(keys.length > 0){
       tag.textContent = `CACHE: WARM (${keys.length} FILES)`;
@@ -802,9 +805,10 @@ async function checkCacheStatus(){
 }
 checkCacheStatus();
 
-/* ---- Web Worker with Cache API Interceptor ---- */
+/* ---- Web Worker with Validated Cache API Interceptor ---- */
 const WORKER_CODE = `
-const CACHE_NAME = "emg-pyodide-v0.27.5";
+const CACHE_NAME = "emg-pyodide-v0.27.5-r2";
+const PYODIDE_BASE = "https://cdn.jsdelivr.net/pyodide/v0.27.5/full/";
 const origFetch = self.fetch.bind(self);
 
 self.fetch = async (input, init) => {
@@ -821,9 +825,14 @@ self.fetch = async (input, init) => {
     try {
       const cache = await caches.open(CACHE_NAME);
       const hit = await cache.match(req);
-      if (hit) return hit;
+      if (hit) {
+        const ct = (hit.headers.get("content-type") || "").toLowerCase();
+        if (!ct.includes("text/html")) return hit;
+        await cache.delete(req);
+      }
       const resp = await origFetch(req);
-      if (resp && resp.ok) {
+      const ct = (resp.headers.get("content-type") || "").toLowerCase();
+      if (resp && resp.ok && !ct.includes("text/html")) {
         cache.put(req, resp.clone()).catch(() => {});
       }
       return resp;
@@ -834,15 +843,32 @@ self.fetch = async (input, init) => {
   return origFetch(req);
 };
 
-importScripts("https://cdn.jsdelivr.net/pyodide/v0.27.5/full/pyodide.js");
-
 let pyodide = null;
 
 function b64ToUtf8(b64){
-  const bin = atob(b64);
+  const clean = String(b64 || "").replace(/\\s+/g, "");
+  const bin = atob(clean);
   const bytes = new Uint8Array(bin.length);
   for(let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
   return new TextDecoder("utf-8").decode(bytes);
+}
+
+async function ensurePyodideLoaded(){
+  if (typeof self.loadPyodide === "function") return;
+  const scriptUrl = PYODIDE_BASE + "pyodide.js";
+  const resp = await self.fetch(scriptUrl);
+  if (!resp.ok) throw new Error("Failed to fetch pyodide.js: HTTP " + resp.status);
+  const code = await resp.text();
+  if (!code || code.trimStart().startsWith("<")) {
+    throw new Error("CDN returned HTML instead of pyodide.js (check network/proxy)");
+  }
+  const blob = new Blob([code], { type: "application/javascript;charset=utf-8" });
+  const blobUrl = URL.createObjectURL(blob);
+  try {
+    importScripts(blobUrl);
+  } finally {
+    URL.revokeObjectURL(blobUrl);
+  }
 }
 
 self.onmessage = async (ev) => {
@@ -850,7 +876,9 @@ self.onmessage = async (ev) => {
   if(msg.type === "boot"){
     try{
       self.postMessage({type:"progress", status:"loading Pyodide...", log:"Loading Pyodide runtime in Web Worker (Cache API enabled)...", cls:"info"});
+      await ensurePyodideLoaded();
       pyodide = await loadPyodide({
+        indexURL: PYODIDE_BASE,
         stdout: s => self.postMessage({type:"stdout", text: s + "\n"}),
         stderr: s => self.postMessage({type:"stderr", text: s + "\n"}),
       });
